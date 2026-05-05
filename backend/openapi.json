@@ -1,0 +1,218 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Synapse API",
+    "description": "AI-powered research & synthesis platform.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/research": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Start Research",
+        "description": "Queue a new research job.\n\nTODO: persist job to DB, push to Redis queue, hand off to orchestrator.",
+        "operationId": "start_research_api_research_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchJobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Depth": {
+        "type": "string",
+        "enum": [
+          "shallow",
+          "standard",
+          "deep"
+        ],
+        "title": "Depth"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "scouting",
+          "synthesizing",
+          "critiquing",
+          "completed",
+          "failed"
+        ],
+        "title": "JobStatus"
+      },
+      "ResearchJobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "progress": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "default": 0.0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "topic",
+          "status"
+        ],
+        "title": "ResearchJobResponse",
+        "description": "Job descriptor returned to the client."
+      },
+      "ResearchRequest": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Topic"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 8,
+            "minLength": 2,
+            "title": "Language",
+            "default": "en"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/Depth",
+            "default": "standard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "ResearchRequest",
+        "description": "Inbound request body for POST /api/research."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

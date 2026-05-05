@@ -1,0 +1,32 @@
+# Pre-commit hooks. Install once with:
+#   npm install -g lefthook   # or: mise use -g lefthook  / brew install lefthook
+#   lefthook install
+#
+# Hooks operate on staged files only and modify them in place.
+
+pre-commit:
+  parallel: true
+  commands:
+    backend-format:
+      glob: "backend/**/*.py"
+      run: uv run --project backend ruff format {staged_files}
+      stage_fixed: true
+    backend-lint:
+      glob: "backend/**/*.py"
+      run: uv run --project backend ruff check --fix {staged_files}
+      stage_fixed: true
+    frontend-format:
+      glob: "frontend/**/*.{ts,tsx,js,jsx,json,css,md}"
+      run: npx --prefix frontend prettier --config frontend/.prettierrc.json --write {staged_files}
+      stage_fixed: true
+    frontend-lint:
+      glob: "frontend/**/*.{ts,tsx}"
+      run: npx --prefix frontend eslint --config frontend/eslint.config.js --fix {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    backend-tests:
+      run: cd backend && uv run pytest -q
+    frontend-tests:
+      run: cd frontend && npm test --silent
