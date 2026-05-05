@@ -17,11 +17,11 @@ pre-commit:
       stage_fixed: true
     frontend-format:
       glob: "frontend/**/*.{ts,tsx,js,jsx,json,css,md}"
-      run: npx --prefix frontend prettier --write {staged_files}
+      run: npx --prefix frontend prettier --config frontend/.prettierrc.json --write {staged_files}
       stage_fixed: true
     frontend-lint:
       glob: "frontend/**/*.{ts,tsx}"
-      run: npx --prefix frontend eslint --fix {staged_files}
+      run: npx --prefix frontend eslint --config frontend/eslint.config.js --fix {staged_files}
       stage_fixed: true
 
 pre-push:
