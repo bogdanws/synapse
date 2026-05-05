@@ -12,12 +12,24 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    ...init,
-  })
+  const headers = new Headers(init?.headers)
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
   if (!response.ok) {
-    throw new ApiError(`Request failed: ${response.statusText}`, response.status)
+    const body = await response.text().catch(() => '')
+    let detail = ''
+    try {
+      const json = JSON.parse(body) as Record<string, unknown>
+      detail = String(json.detail ?? json.message ?? json.error ?? '')
+    } catch {
+      // non-JSON error body (e.g. HTML from a proxy); ignore
+    }
+    throw new ApiError(
+      `Request failed: ${response.status}${detail ? ` — ${detail}` : ''}`,
+      response.status,
+    )
   }
   return (await response.json()) as T
 }
