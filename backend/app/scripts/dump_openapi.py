@@ -11,10 +11,15 @@ Keeps frontend types in lockstep with backend Pydantic models.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
-from app.main import app
+# This script only serializes the OpenAPI schema; it never signs a token. Provide
+# a placeholder so settings validation does not require a real JWT_SECRET in CI.
+os.environ.setdefault("JWT_SECRET", "openapi-dump-placeholder")
+
+from app.main import app  # noqa: E402 - import after env setup
 
 
 def main(out: Path | None = None) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,11 +30,19 @@ class Settings(BaseSettings):
         alias="DATABASE_URL",
     )
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
-    jwt_secret: str = Field(default="", alias="JWT_SECRET")
+    jwt_secret: str = Field(alias="JWT_SECRET")
 
     # Server
     log_level: str = Field(default="info", alias="LOG_LEVEL")
     cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def _reject_empty_jwt_secret(cls, v: str) -> str:
+        if not v or not v.strip():
+            msg = "JWT_SECRET must be set to a non-empty value (check .env or environment)"
+            raise ValueError(msg)
+        return v
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -44,4 +52,6 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Cached settings accessor. Use in dependency injection."""
-    return Settings()
+    # Pydantic-settings populates fields from environment variables at runtime.
+    # mypy cannot see this, so we suppress the missing-argument check.
+    return Settings()  # type: ignore[call-arg]
