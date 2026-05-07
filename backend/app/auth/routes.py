@@ -4,27 +4,27 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.auth.dependencies import _auth_app, cookie_backend, jwt_backend
+from app.auth.dependencies import auth_app, cookie_backend, jwt_backend
 from app.auth.schemas import UserCreate, UserRead, UserUpdate
 
 router = APIRouter()
 
 router.include_router(
-    _auth_app.get_auth_router(cookie_backend),
+    auth_app.get_auth_router(cookie_backend),
     prefix="/cookie",
     tags=["auth"],
 )
 router.include_router(
-    _auth_app.get_auth_router(jwt_backend),
+    auth_app.get_auth_router(jwt_backend),
     prefix="/jwt",
     tags=["auth"],
 )
 router.include_router(
-    _auth_app.get_register_router(UserRead, UserCreate),
+    auth_app.get_register_router(UserRead, UserCreate),
     tags=["auth"],
 )
 router.include_router(
-    _auth_app.get_users_router(UserRead, UserUpdate),
+    auth_app.get_users_router(UserRead, UserUpdate),
     prefix="/users",
     tags=["auth"],
 )

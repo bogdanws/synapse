@@ -49,10 +49,10 @@ jwt_backend = AuthenticationBackend(
     get_strategy=_get_jwt_strategy,
 )
 
-_auth_app: FastAPIUsers[User, uuid.UUID] = FastAPIUsers(
+auth_app: FastAPIUsers[User, uuid.UUID] = FastAPIUsers(
     get_user_manager,
     [cookie_backend, jwt_backend],
 )
 
-current_active_user = _auth_app.current_user(active=True)
-current_superuser = _auth_app.current_user(active=True, superuser=True)
+current_active_user = auth_app.current_user(active=True)
+current_superuser = auth_app.current_user(active=True, superuser=True)

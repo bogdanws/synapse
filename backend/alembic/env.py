@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from typing import Literal
 
 from alembic.autogenerate.api import AutogenContext
+from fastapi_users_db_sqlalchemy.generics import GUID
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -39,14 +40,8 @@ def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str
     which is not importable from a standalone migration file. Intercepting it
     here means no migration file will ever contain a bare GUID reference.
     """
-    if type_ == "type":
-        try:
-            from fastapi_users_db_sqlalchemy.generics import GUID
-
-            if isinstance(obj, GUID):
-                return "sa.Uuid()"
-        except ImportError:
-            pass
+    if type_ == "type" and isinstance(obj, GUID):
+        return "sa.Uuid()"
     return False
 
 
