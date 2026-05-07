@@ -89,27 +89,26 @@ jobs:
         run: git diff --exit-code -- ../backend/openapi.json src/types/api
 
   docker:
-    name: Docker build
+    name: Docker build (${{ matrix.service }})
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            context: ./backend
+          - service: frontend
+            context: ./frontend
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image
+      - name: Build ${{ matrix.service }} image
         uses: docker/build-push-action@v7
         with:
-          context: ./backend
+          context: ${{ matrix.context }}
           push: false
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-
-      - name: Build frontend image
-        uses: docker/build-push-action@v7
-        with:
-          context: ./frontend
-          push: false
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=min,scope=${{ matrix.service }}
