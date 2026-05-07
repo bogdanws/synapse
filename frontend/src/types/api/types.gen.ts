@@ -5,53 +5,9 @@ export type ClientOptions = {
 }
 
 /**
- * BearerResponse
+ * Body_auth_cookie_login_api_auth_login_post
  */
-export type BearerResponse = {
-  /**
-   * Access Token
-   */
-  access_token: string
-  /**
-   * Token Type
-   */
-  token_type: string
-}
-
-/**
- * Body_auth_cookie_login_api_auth_cookie_login_post
- */
-export type BodyAuthCookieLoginApiAuthCookieLoginPost = {
-  /**
-   * Grant Type
-   */
-  grant_type?: string | null
-  /**
-   * Username
-   */
-  username: string
-  /**
-   * Password
-   */
-  password: string
-  /**
-   * Scope
-   */
-  scope?: string
-  /**
-   * Client Id
-   */
-  client_id?: string | null
-  /**
-   * Client Secret
-   */
-  client_secret?: string | null
-}
-
-/**
- * Body_auth_jwt_login_api_auth_jwt_login_post
- */
-export type BodyAuthJwtLoginApiAuthJwtLoginPost = {
+export type BodyAuthCookieLoginApiAuthLoginPost = {
   /**
    * Grant Type
    */
@@ -266,14 +222,14 @@ export type ValidationError = {
   }
 }
 
-export type AuthCookieLoginApiAuthCookieLoginPostData = {
-  body: BodyAuthCookieLoginApiAuthCookieLoginPost
+export type AuthCookieLoginApiAuthLoginPostData = {
+  body: BodyAuthCookieLoginApiAuthLoginPost
   path?: never
   query?: never
-  url: '/api/auth/cookie/login'
+  url: '/api/auth/login'
 }
 
-export type AuthCookieLoginApiAuthCookieLoginPostErrors = {
+export type AuthCookieLoginApiAuthLoginPostErrors = {
   /**
    * Bad Request
    */
@@ -284,10 +240,10 @@ export type AuthCookieLoginApiAuthCookieLoginPostErrors = {
   422: HttpValidationError
 }
 
-export type AuthCookieLoginApiAuthCookieLoginPostError =
-  AuthCookieLoginApiAuthCookieLoginPostErrors[keyof AuthCookieLoginApiAuthCookieLoginPostErrors]
+export type AuthCookieLoginApiAuthLoginPostError =
+  AuthCookieLoginApiAuthLoginPostErrors[keyof AuthCookieLoginApiAuthLoginPostErrors]
 
-export type AuthCookieLoginApiAuthCookieLoginPostResponses = {
+export type AuthCookieLoginApiAuthLoginPostResponses = {
   /**
    * Successful Response
    */
@@ -298,24 +254,24 @@ export type AuthCookieLoginApiAuthCookieLoginPostResponses = {
   204: void
 }
 
-export type AuthCookieLoginApiAuthCookieLoginPostResponse =
-  AuthCookieLoginApiAuthCookieLoginPostResponses[keyof AuthCookieLoginApiAuthCookieLoginPostResponses]
+export type AuthCookieLoginApiAuthLoginPostResponse =
+  AuthCookieLoginApiAuthLoginPostResponses[keyof AuthCookieLoginApiAuthLoginPostResponses]
 
-export type AuthCookieLogoutApiAuthCookieLogoutPostData = {
+export type AuthCookieLogoutApiAuthLogoutPostData = {
   body?: never
   path?: never
   query?: never
-  url: '/api/auth/cookie/logout'
+  url: '/api/auth/logout'
 }
 
-export type AuthCookieLogoutApiAuthCookieLogoutPostErrors = {
+export type AuthCookieLogoutApiAuthLogoutPostErrors = {
   /**
    * Missing token or inactive user.
    */
   401: unknown
 }
 
-export type AuthCookieLogoutApiAuthCookieLogoutPostResponses = {
+export type AuthCookieLogoutApiAuthLogoutPostResponses = {
   /**
    * Successful Response
    */
@@ -326,60 +282,8 @@ export type AuthCookieLogoutApiAuthCookieLogoutPostResponses = {
   204: void
 }
 
-export type AuthCookieLogoutApiAuthCookieLogoutPostResponse =
-  AuthCookieLogoutApiAuthCookieLogoutPostResponses[keyof AuthCookieLogoutApiAuthCookieLogoutPostResponses]
-
-export type AuthJwtLoginApiAuthJwtLoginPostData = {
-  body: BodyAuthJwtLoginApiAuthJwtLoginPost
-  path?: never
-  query?: never
-  url: '/api/auth/jwt/login'
-}
-
-export type AuthJwtLoginApiAuthJwtLoginPostErrors = {
-  /**
-   * Bad Request
-   */
-  400: ErrorModel
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError
-}
-
-export type AuthJwtLoginApiAuthJwtLoginPostError =
-  AuthJwtLoginApiAuthJwtLoginPostErrors[keyof AuthJwtLoginApiAuthJwtLoginPostErrors]
-
-export type AuthJwtLoginApiAuthJwtLoginPostResponses = {
-  /**
-   * Successful Response
-   */
-  200: BearerResponse
-}
-
-export type AuthJwtLoginApiAuthJwtLoginPostResponse =
-  AuthJwtLoginApiAuthJwtLoginPostResponses[keyof AuthJwtLoginApiAuthJwtLoginPostResponses]
-
-export type AuthJwtLogoutApiAuthJwtLogoutPostData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/api/auth/jwt/logout'
-}
-
-export type AuthJwtLogoutApiAuthJwtLogoutPostErrors = {
-  /**
-   * Missing token or inactive user.
-   */
-  401: unknown
-}
-
-export type AuthJwtLogoutApiAuthJwtLogoutPostResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown
-}
+export type AuthCookieLogoutApiAuthLogoutPostResponse =
+  AuthCookieLogoutApiAuthLogoutPostResponses[keyof AuthCookieLogoutApiAuthLogoutPostResponses]
 
 export type RegisterRegisterApiAuthRegisterPostData = {
   body: UserCreate

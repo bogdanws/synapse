@@ -8,18 +8,12 @@ import {
 } from './client'
 import { client } from './client.gen'
 import type {
-  AuthCookieLoginApiAuthCookieLoginPostData,
-  AuthCookieLoginApiAuthCookieLoginPostErrors,
-  AuthCookieLoginApiAuthCookieLoginPostResponses,
-  AuthCookieLogoutApiAuthCookieLogoutPostData,
-  AuthCookieLogoutApiAuthCookieLogoutPostErrors,
-  AuthCookieLogoutApiAuthCookieLogoutPostResponses,
-  AuthJwtLoginApiAuthJwtLoginPostData,
-  AuthJwtLoginApiAuthJwtLoginPostErrors,
-  AuthJwtLoginApiAuthJwtLoginPostResponses,
-  AuthJwtLogoutApiAuthJwtLogoutPostData,
-  AuthJwtLogoutApiAuthJwtLogoutPostErrors,
-  AuthJwtLogoutApiAuthJwtLogoutPostResponses,
+  AuthCookieLoginApiAuthLoginPostData,
+  AuthCookieLoginApiAuthLoginPostErrors,
+  AuthCookieLoginApiAuthLoginPostResponses,
+  AuthCookieLogoutApiAuthLogoutPostData,
+  AuthCookieLogoutApiAuthLogoutPostErrors,
+  AuthCookieLogoutApiAuthLogoutPostResponses,
   HealthHealthGetData,
   HealthHealthGetResponses,
   RegisterRegisterApiAuthRegisterPostData,
@@ -66,16 +60,16 @@ export type Options<
 /**
  * Auth:Cookie.Login
  */
-export const authCookieLoginApiAuthCookieLoginPost = <ThrowOnError extends boolean = false>(
-  options: Options<AuthCookieLoginApiAuthCookieLoginPostData, ThrowOnError>,
+export const authCookieLoginApiAuthLoginPost = <ThrowOnError extends boolean = false>(
+  options: Options<AuthCookieLoginApiAuthLoginPostData, ThrowOnError>,
 ) =>
   (options.client ?? client).post<
-    AuthCookieLoginApiAuthCookieLoginPostResponses,
-    AuthCookieLoginApiAuthCookieLoginPostErrors,
+    AuthCookieLoginApiAuthLoginPostResponses,
+    AuthCookieLoginApiAuthLoginPostErrors,
     ThrowOnError
   >({
     ...urlSearchParamsBodySerializer,
-    url: '/api/auth/cookie/login',
+    url: '/api/auth/login',
     ...options,
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -86,12 +80,12 @@ export const authCookieLoginApiAuthCookieLoginPost = <ThrowOnError extends boole
 /**
  * Auth:Cookie.Logout
  */
-export const authCookieLogoutApiAuthCookieLogoutPost = <ThrowOnError extends boolean = false>(
-  options?: Options<AuthCookieLogoutApiAuthCookieLogoutPostData, ThrowOnError>,
+export const authCookieLogoutApiAuthLogoutPost = <ThrowOnError extends boolean = false>(
+  options?: Options<AuthCookieLogoutApiAuthLogoutPostData, ThrowOnError>,
 ) =>
   (options?.client ?? client).post<
-    AuthCookieLogoutApiAuthCookieLogoutPostResponses,
-    AuthCookieLogoutApiAuthCookieLogoutPostErrors,
+    AuthCookieLogoutApiAuthLogoutPostResponses,
+    AuthCookieLogoutApiAuthLogoutPostErrors,
     ThrowOnError
   >({
     security: [
@@ -100,52 +94,8 @@ export const authCookieLogoutApiAuthCookieLogoutPost = <ThrowOnError extends boo
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
-    url: '/api/auth/cookie/logout',
-    ...options,
-  })
-
-/**
- * Auth:Jwt.Login
- */
-export const authJwtLoginApiAuthJwtLoginPost = <ThrowOnError extends boolean = false>(
-  options: Options<AuthJwtLoginApiAuthJwtLoginPostData, ThrowOnError>,
-) =>
-  (options.client ?? client).post<
-    AuthJwtLoginApiAuthJwtLoginPostResponses,
-    AuthJwtLoginApiAuthJwtLoginPostErrors,
-    ThrowOnError
-  >({
-    ...urlSearchParamsBodySerializer,
-    url: '/api/auth/jwt/login',
-    ...options,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      ...options.headers,
-    },
-  })
-
-/**
- * Auth:Jwt.Logout
- */
-export const authJwtLogoutApiAuthJwtLogoutPost = <ThrowOnError extends boolean = false>(
-  options?: Options<AuthJwtLogoutApiAuthJwtLogoutPostData, ThrowOnError>,
-) =>
-  (options?.client ?? client).post<
-    AuthJwtLogoutApiAuthJwtLogoutPostResponses,
-    AuthJwtLogoutApiAuthJwtLogoutPostErrors,
-    ThrowOnError
-  >({
-    security: [
-      {
-        in: 'cookie',
-        name: 'synapse_auth',
-        type: 'apiKey',
-      },
-      { scheme: 'bearer', type: 'http' },
-    ],
-    url: '/api/auth/jwt/logout',
+    url: '/api/auth/logout',
     ...options,
   })
 
@@ -185,7 +135,6 @@ export const usersCurrentUserApiAuthUsersMeGet = <ThrowOnError extends boolean =
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
     url: '/api/auth/users/me',
     ...options,
@@ -208,7 +157,6 @@ export const usersPatchCurrentUserApiAuthUsersMePatch = <ThrowOnError extends bo
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
     url: '/api/auth/users/me',
     ...options,
@@ -235,7 +183,6 @@ export const usersDeleteUserApiAuthUsersIdDelete = <ThrowOnError extends boolean
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
     url: '/api/auth/users/{id}',
     ...options,
@@ -258,7 +205,6 @@ export const usersUserApiAuthUsersIdGet = <ThrowOnError extends boolean = false>
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
     url: '/api/auth/users/{id}',
     ...options,
@@ -281,7 +227,6 @@ export const usersPatchUserApiAuthUsersIdPatch = <ThrowOnError extends boolean =
         name: 'synapse_auth',
         type: 'apiKey',
       },
-      { scheme: 'bearer', type: 'http' },
     ],
     url: '/api/auth/users/{id}',
     ...options,
