@@ -1,6 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic.autogenerate.api import AutogenContext
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -28,10 +29,24 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+
+def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str | bool:
+    """Render fastapi-users' GUID type as sa.Uuid() in generated migrations.
+
+    fastapi-users uses its own cross-DB GUID wrapper. On PostgreSQL that is
+    identical to sa.Uuid(), but Alembic renders it by its original class path
+    which is not importable from a standalone migration file. Intercepting it
+    here means no migration file will ever contain a bare GUID reference.
+    """
+    if type_ == "type":
+        try:
+            from fastapi_users_db_sqlalchemy.generics import GUID  # type: ignore[import-untyped]
+
+            if isinstance(obj, GUID):
+                return "sa.Uuid()"
+        except ImportError:
+            pass
+    return False
 
 
 def run_migrations_offline() -> None:
@@ -53,6 +68,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        render_item=render_item,
     )
 
     with context.begin_transaction():
@@ -64,6 +80,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        render_item=render_item,
     )
 
     with context.begin_transaction():

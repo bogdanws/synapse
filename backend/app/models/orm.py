@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, Text, UniqueConstraint, func
+from sqlalchemy import TIMESTAMP, ForeignKey, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,9 +32,13 @@ class ResearchJob(Base):
     status: Mapped[str] = mapped_column(server_default="pending", index=True)
     progress: Mapped[float] = mapped_column(server_default="0")
     error: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
-    completed_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     sources: Mapped[list[Source]] = relationship(back_populates="job", cascade="all, delete-orphan")
     report: Mapped[Report | None] = relationship(
@@ -69,7 +73,7 @@ class Source(Base):
     url: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
     author: Mapped[str | None] = mapped_column(Text)
-    published_at: Mapped[datetime | None]
+    published_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     snippet: Mapped[str] = mapped_column(Text)
     content: Mapped[str | None] = mapped_column(Text)
     credibility: Mapped[float]
@@ -91,7 +95,7 @@ class Report(Base):
     # at the Pydantic layer before write and after read.
     body: Mapped[dict[str, Any]] = mapped_column(JSONB)
     model: Mapped[str]
-    generated_at: Mapped[datetime]
+    generated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
 
     job: Mapped[ResearchJob] = relationship(back_populates="report")
     critic_annotation: Mapped[CriticAnnotation | None] = relationship(
@@ -112,7 +116,7 @@ class CriticAnnotation(Base):
     body: Mapped[dict[str, Any]] = mapped_column(JSONB)
     overall_confidence: Mapped[float]
     model: Mapped[str]
-    generated_at: Mapped[datetime]
+    generated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
 
     report: Mapped[Report] = relationship(back_populates="critic_annotation")
 
@@ -124,7 +128,9 @@ class FollowUp(Base):
     parent_job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("research_jobs.id"), index=True)
     child_job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("research_jobs.id"), index=True)
     question: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
 
     parent_job: Mapped[ResearchJob] = relationship(
         foreign_keys=[parent_job_id],
