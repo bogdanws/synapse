@@ -49,8 +49,9 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "agent_eval: LLM-as-judge evals (slow, requires API keys, run on demand)",
+    "integration: tests that require a live Postgres instance",
 ]
-addopts = "-ra --strict-markers -m 'not agent_eval'"
+addopts = "-ra --strict-markers -m 'not agent_eval and not integration'"
 
 [tool.ruff]
 line-length = 100

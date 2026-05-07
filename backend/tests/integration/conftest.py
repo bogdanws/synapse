@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Generator
+import os
+from collections.abc import AsyncIterator, Generator
 
 import pytest
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+
+os.environ.setdefault("JWT_SECRET", "test-secret-min-32-chars-for-pytest-runs")
 
 import app.auth.models  # noqa: F401 - register User table with Base.metadata
 import app.models.orm  # noqa: F401 - register research domain tables
@@ -31,3 +34,20 @@ def create_tables() -> Generator[None]:
 
     asyncio.run(_setup())
     yield
+
+
+@pytest.fixture
+async def async_session() -> AsyncIterator[AsyncSession]:
+    """Yield an async SQLAlchemy session bound to a per-test engine.
+
+    A fresh engine with NullPool is built per test so that asyncpg connections
+    are not cached across pytest-asyncio's per-test event loops (which would
+    raise "got Future attached to a different loop").
+    """
+    engine = create_async_engine(get_settings().database_url, poolclass=NullPool)
+    factory = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    try:
+        async with factory() as session:
+            yield session
+    finally:
+        await engine.dispose()

@@ -7,6 +7,8 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_register_login_me(client: AsyncClient) -> None:
