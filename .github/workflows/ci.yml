@@ -68,6 +68,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -77,16 +83,11 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
 
-      - name: Install backend dependencies (for OpenAPI dump)
+      - name: Install backend dependencies
         run: cd ../backend && uv sync --all-extras
 
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm test
-      - run: npm run build
       - name: Verify generated API files are committed
-        run: git diff --exit-code -- ../backend/openapi.json src/types/api
+        run: npm run api:check
 
   docker:
     name: Docker build (${{ matrix.service }})
