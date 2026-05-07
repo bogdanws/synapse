@@ -22,7 +22,7 @@ class ResearchJob(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
+        ForeignKey("user.id", ondelete="CASCADE"), index=True
     )
     topic: Mapped[str] = mapped_column(Text)
     language: Mapped[str] = mapped_column(server_default="en")
@@ -55,8 +55,10 @@ class ResearchJob(Base):
 class Source(Base):
     __tablename__ = "sources"
     __table_args__ = (
-        UniqueConstraint("job_id", "short_id"),
-        UniqueConstraint("job_id", "url"),
+        # Explicit names required: both constraints share job_id as column_0,
+        # so the default naming convention would generate the same name twice.
+        UniqueConstraint("job_id", "short_id", name="uq_sources_job_id_short_id"),
+        UniqueConstraint("job_id", "url", name="uq_sources_job_id_url"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
