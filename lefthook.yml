@@ -17,7 +17,10 @@ pre-commit:
       stage_fixed: true
     frontend-format:
       glob: "frontend/**/*.{ts,tsx,js,jsx,json,css,md}"
-      run: npx --prefix frontend prettier --config frontend/.prettierrc.json --write {staged_files}
+      # --ignore-path is required because lefthook runs from the repo root,
+      # where prettier would otherwise not find frontend/.prettierignore and
+      # would reformat the generated files under src/types/api/.
+      run: npx --prefix frontend prettier --config frontend/.prettierrc.json --ignore-path frontend/.prettierignore --write {staged_files}
       stage_fixed: true
     frontend-lint:
       glob: "frontend/**/*.{ts,tsx}"
