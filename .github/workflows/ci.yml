@@ -39,6 +39,9 @@ jobs:
       - name: Lint
         run: uv run ruff check app tests
 
+      - name: Format check
+        run: uv run ruff format --check app tests
+
       - name: Tests
         run: uv run pytest --cov=app --cov-report=xml
 
@@ -79,6 +82,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm run format:check
       - run: npm test
       - run: npm run build
       - name: Verify generated API files are committed
