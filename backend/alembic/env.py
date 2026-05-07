@@ -1,5 +1,6 @@
 import asyncio
 from logging.config import fileConfig
+from typing import Literal
 
 from alembic.autogenerate.api import AutogenContext
 from sqlalchemy import pool
@@ -30,7 +31,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str | bool:
+def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str | Literal[False]:
     """Render fastapi-users' GUID type as sa.Uuid() in generated migrations.
 
     fastapi-users uses its own cross-DB GUID wrapper. On PostgreSQL that is
@@ -40,7 +41,7 @@ def render_item(type_: str, obj: object, autogen_context: AutogenContext) -> str
     """
     if type_ == "type":
         try:
-            from fastapi_users_db_sqlalchemy.generics import GUID  # type: ignore[import-untyped]
+            from fastapi_users_db_sqlalchemy.generics import GUID
 
             if isinstance(obj, GUID):
                 return "sa.Uuid()"
