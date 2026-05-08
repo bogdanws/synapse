@@ -1117,8 +1117,7 @@
         "required": [
           "id",
           "heading",
-          "body_md",
-          "cited_source_ids"
+          "body_md"
         ],
         "title": "ReportSection",
         "type": "object"

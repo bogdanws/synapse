@@ -62,7 +62,6 @@ def test_report_body_jsonb_is_round_trippable_json() -> None:
                 id="sec1",
                 heading="H",
                 body_md='<span data-claim="sec1.c1">x[^s1]</span>',
-                cited_source_ids=["s1"],
             )
         ],
         sources=[_source("s1")],

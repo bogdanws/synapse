@@ -7,9 +7,11 @@ Pydantic catches type errors for free. These validators enforce the cross-field 
     section's id as prefix and the claim suffix (`c1`, `c2`, …) is sequential
     starting at 1, with each claim id appearing exactly once.
   * Every `[^sX]` footnote reference resolves to a `Source.id` declared on
-    the report.
-  * Every entry in a section's `cited_source_ids` actually appears as a
-    `[^sX]` footnote reference in that section's `body_md`.
+    the report — the only direction that catches genuine hallucination
+    (referencing a source that does not exist) rather than redundant data
+    the model could be asked to maintain.
+
+`ReportSection.cited_source_ids` is intentionally not validated here: it is derived from `body_md` by a model_validator on the section itself, so it cannot disagree with the prose.
 
 A regex-based pass over the markdown is enough for these checks; the format is small and we do not need to interpret the document, only inspect a handful of inline patterns. Switching to a full markdown-it AST would buy more thorough span detection but no extra invariant coverage.
 """
@@ -55,7 +57,6 @@ def validate_scribe_report(report: ScribeReport) -> None:
         expected_section_id = f"sec{index}"
         _validate_claim_spans(section, expected_section_id)
         _validate_footnote_refs(section, source_ids)
-        _validate_cited_sources_present(section)
 
 
 def validate_critic_annotations(annotations: CriticAnnotations, report: ScribeReport) -> None:
@@ -154,18 +155,6 @@ def _validate_footnote_refs(section: ReportSection, source_ids: set[str]) -> Non
     unknown = refs - source_ids
     if unknown:
         msg = f"section {section.id}: footnote refs {sorted(unknown)} do not match any Source.id"
-        raise ScribeValidationError(msg)
-
-
-def _validate_cited_sources_present(section: ReportSection) -> None:
-    refs = set(_FOOTNOTE_REF_RE.findall(section.body_md))
-    declared = set(section.cited_source_ids)
-    missing = declared - refs
-    if missing:
-        msg = (
-            f"section {section.id}: cited_source_ids {sorted(missing)} "
-            f"never appear as [^sX] footnote refs in body_md"
-        )
         raise ScribeValidationError(msg)
 
 

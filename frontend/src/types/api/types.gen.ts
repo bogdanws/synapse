@@ -348,7 +348,7 @@ export type ReportSection = {
     /**
      * Cited Source Ids
      */
-    cited_source_ids: Array<string>;
+    cited_source_ids?: Array<string>;
 };
 
 /**

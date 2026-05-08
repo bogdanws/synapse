@@ -46,8 +46,7 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
     {
       "id": "sec1",
       "heading": "<section heading>",
-      "body_md": "<GFM markdown body — see Body rules below>",
-      "cited_source_ids": ["s1", "s3", ...]
+      "body_md": "<GFM markdown body — see Body rules below>"
     },
     ...
   ],
@@ -60,7 +59,6 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
 Field rules
 -----------
 - `id`: sequential `sec1`, `sec2`, `sec3`, ... with no gaps. Aim for 3-6 sections with descriptive headings.
-- `cited_source_ids`: every id listed here MUST appear at least once as `[^sX]` inside that section's `body_md`. Conversely, do not list ids that aren't actually cited in the prose.
 
 Body rules (mandatory — most failures come from skipping these)
 ---------------------------------------------------------------
@@ -77,16 +75,25 @@ Worked example of one section's `body_md`:
 
     The market grew 12% YoY in Q4 <span data-claim="sec1.c1">according to the industry report[^s2]</span>. Adoption was uneven across regions, <span data-claim="sec1.c2">with EMEA leading[^s4][^s7]</span>.
 
-with `cited_source_ids: ["s2", "s4", "s7"]`.
-
 Do not invent sources. Only cite ids that appear in the input list.
 """
+
+
+class _LLMReportSection(BaseModel):
+    """Section shape the model emits.
+
+    Narrower than `ReportSection`: omits `cited_source_ids`, which is derived server-side from `body_md` after the call. Asking the model to maintain that field in lockstep with its own prose was a frequent retry trigger and added nothing the renderer or critic couldn't get from the footnote refs themselves.
+    """
+
+    id: str
+    heading: str
+    body_md: str
 
 
 class _ScribeLLMOutput(BaseModel):
     title: str
     summary_md: str
-    sections: list[ReportSection]
+    sections: list[_LLMReportSection]
     contradictions: list[Contradiction]
     follow_ups: list[str]
 
@@ -158,13 +165,18 @@ class ScribeAgent:
         sources: list[Source],
         llm_output: _ScribeLLMOutput,
     ) -> ScribeReport:
+        # `cited_source_ids` is filled in by `ReportSection`'s model_validator from `body_md`; we just hand over the three fields the model produced.
+        sections = [
+            ReportSection(id=s.id, heading=s.heading, body_md=s.body_md)
+            for s in llm_output.sections
+        ]
         return ScribeReport(
             id=uuid4(),
             job_id=job_id,
             topic=topic,
             title=llm_output.title,
             summary_md=llm_output.summary_md,
-            sections=llm_output.sections,
+            sections=sections,
             sources=sources,
             contradictions=llm_output.contradictions,
             follow_ups=llm_output.follow_ups,

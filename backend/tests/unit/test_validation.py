@@ -41,15 +41,10 @@ def _section(
     section_id: str,
     *,
     body_md: str,
-    cited: list[str] | None = None,
     heading: str = "h",
 ) -> ReportSection:
-    return ReportSection(
-        id=section_id,
-        heading=heading,
-        body_md=body_md,
-        cited_source_ids=cited or [],
-    )
+    # `cited_source_ids` is derived from `body_md` by the model itself; tests that need to assert on the derived list do so via the constructed instance rather than by passing it in.
+    return ReportSection(id=section_id, heading=heading, body_md=body_md)
 
 
 def _report(sections: list[ReportSection], sources: list[Source] | None = None) -> ScribeReport:
@@ -95,9 +90,25 @@ def test_valid_report_passes() -> None:
             'Intro <span data-claim="sec1.c1">first claim[^s1]</span>.\n\n'
             'More text <span data-claim="sec1.c2">second claim[^s2]</span>.\n'
         ),
-        cited=["s1", "s2"],
     )
     validate_scribe_report(_report([section]))
+
+
+def test_cited_source_ids_are_derived_from_body_md() -> None:
+    """The field is server-derived; whatever is passed in is overwritten.
+
+    We only assert on first-occurrence ordering here. Footnote-vs-source consistency is the validator's job and is covered separately below.
+    """
+    section = ReportSection(
+        id="sec1",
+        heading="h",
+        body_md=(
+            '<span data-claim="sec1.c1">a[^s2][^s1]</span> '
+            '<span data-claim="sec1.c2">b[^s2][^s3]</span>'
+        ),
+        cited_source_ids=["s99"],  # ignored — derivation overwrites
+    )
+    assert section.cited_source_ids == ["s2", "s1", "s3"]
 
 
 # ---- section ids -----------------------------------------------------------
@@ -178,32 +189,14 @@ def test_rejects_footnote_ref_to_unknown_source() -> None:
         validate_scribe_report(_report([section]))
 
 
-def test_rejects_cited_source_not_present_in_body() -> None:
-    section = _section(
-        "sec1",
-        body_md='<span data-claim="sec1.c1">a[^s1]</span>',
-        cited=["s1", "s2"],  # s2 declared but no [^s2] in body
-    )
-    with pytest.raises(ScribeValidationError, match="\\['s2'\\]"):
-        validate_scribe_report(_report([section]))
-
-
 # ---- critic validation -----------------------------------------------------
 
 
 def _two_section_report() -> ScribeReport:
     return _report(
         [
-            _section(
-                "sec1",
-                body_md='<span data-claim="sec1.c1">a[^s1]</span>',
-                cited=["s1"],
-            ),
-            _section(
-                "sec2",
-                body_md='<span data-claim="sec2.c1">b[^s2]</span>',
-                cited=["s2"],
-            ),
+            _section("sec1", body_md='<span data-claim="sec1.c1">a[^s1]</span>'),
+            _section("sec2", body_md='<span data-claim="sec2.c1">b[^s2]</span>'),
         ]
     )
 

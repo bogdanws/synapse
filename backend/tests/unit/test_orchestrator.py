@@ -77,7 +77,6 @@ def _report(job_id: UUID, sources: list[Source]) -> ScribeReport:
                 id="sec1",
                 heading="H",
                 body_md='<span data-claim="sec1.c1">a[^s1]</span>',
-                cited_source_ids=["s1"],
             )
         ],
         sources=sources,

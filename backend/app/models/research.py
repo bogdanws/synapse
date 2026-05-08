@@ -6,6 +6,7 @@ The matching SQLAlchemy ORM tables live in app/models/orm.py; keep the two in sy
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
@@ -13,6 +14,9 @@ from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 REQUIRED_MODEL_AGENTS = ("scout", "scribe", "critic")
+
+# Footnote refs of the form `[^sX]`. Used to derive `ReportSection.cited_source_ids` from prose. Definitions (`[^sX]: ...`) match the same pattern; deduplication below means the trailing colon variant is harmless.
+_FOOTNOTE_REF_RE = re.compile(r"\[\^(s\d+)\]")
 
 
 class JobStatus(StrEnum):
@@ -82,7 +86,20 @@ class ReportSection(BaseModel):
     heading: str
     # GFM markdown; factual claims wrapped in <span data-claim="secN.cM">.
     body_md: str
-    cited_source_ids: list[str]  # subset of ScribeReport.sources[].id
+    # Always derived from `body_md` — see `_derive_cited_source_ids`. Kept on the model so consumers can read it without parsing markdown, but the LLM never produces it: asking a model to maintain a list redundant with the prose just gave us a steady stream of validation retries when the two disagreed.
+    cited_source_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _derive_cited_source_ids(self) -> ReportSection:
+        # Overwrite whatever was supplied at construction time. The single source of truth is `body_md`; any caller-provided value (LLM output, deserialized JSONB, test fixture) is ignored on purpose so the field can never drift from the prose. Order is first-appearance for stable rendering and reproducible diffs.
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for ref in _FOOTNOTE_REF_RE.findall(self.body_md):
+            if ref not in seen:
+                seen.add(ref)
+                ordered.append(ref)
+        self.cited_source_ids = ordered
+        return self
 
 
 class Contradiction(BaseModel):

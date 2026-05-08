@@ -52,14 +52,16 @@ def _source(short_id: str, url: str = "https://example.com/x") -> Source:
 
 
 def _llm_payload(*, sections: list[dict[str, Any]] | None = None) -> str:
-    """Build a valid `_ScribeLLMOutput` JSON payload."""
+    """Build a valid `_ScribeLLMOutput` JSON payload.
+
+    Sections deliberately omit `cited_source_ids`: the LLM no longer emits it; `ReportSection` derives it from `body_md` after parsing.
+    """
     if sections is None:
         sections = [
             {
                 "id": "sec1",
                 "heading": "Background",
                 "body_md": '<span data-claim="sec1.c1">first claim[^s1]</span>',
-                "cited_source_ids": ["s1"],
             }
         ]
     return json.dumps(
@@ -99,6 +101,8 @@ async def test_synthesize_returns_validated_report(
     assert report.model == "test/model"
     assert isinstance(report.id, UUID)
     assert report.sections[0].id == "sec1"
+    # `cited_source_ids` is derived server-side from body_md footnote refs even though the LLM did not produce it.
+    assert report.sections[0].cited_source_ids == ["s1"]
 
 
 # ---- agent: empty source list ----------------------------------------------
@@ -127,7 +131,6 @@ async def test_synthesize_retries_with_feedback_on_validation_failure(
                     '<span data-claim="sec1.c1">a[^s1]</span> '
                     '<span data-claim="sec1.c3">b[^s1]</span>'  # gap -> invalid
                 ),
-                "cited_source_ids": ["s1"],
             }
         ]
     )
@@ -174,7 +177,6 @@ async def test_synthesize_gives_up_after_max_retries(respx_mock: respx.MockRoute
                 "id": "sec99",  # wrong section id
                 "heading": "X",
                 "body_md": "",
-                "cited_source_ids": [],
             }
         ]
     )
@@ -202,13 +204,11 @@ async def test_run_scribe_emits_section_drafted_then_complete() -> None:
             "id": "sec1",
             "heading": "A",
             "body_md": '<span data-claim="sec1.c1">x[^s1]</span>',
-            "cited_source_ids": ["s1"],
         },
         {
             "id": "sec2",
             "heading": "B",
             "body_md": '<span data-claim="sec2.c1">y[^s1]</span>',
-            "cited_source_ids": ["s1"],
         },
     ]
 

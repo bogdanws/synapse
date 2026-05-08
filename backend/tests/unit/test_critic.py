@@ -54,7 +54,6 @@ def _section(section_id: str, claim_count: int = 1) -> ReportSection:
         id=section_id,
         heading=f"H{section_id}",
         body_md=spans,
-        cited_source_ids=["s1"],
     )
 
 
