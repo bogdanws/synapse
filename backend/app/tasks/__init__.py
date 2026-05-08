@@ -12,7 +12,8 @@ referenced from docker-compose is `app.tasks:broker`.
 
 from __future__ import annotations
 
-# Import task modules so their @broker.task decorators run at module import. The worker also discovers them via --fs-discover, but explicit import keeps the API process registry consistent regardless of CWD.
+# Import task modules here so their @broker.task decorators register on every importer (the API process when it enqueues, the worker when it loads `app.tasks:broker`).
+# Avoids relying on taskiq's `--fs-discover`, which walks the working tree and chokes on the project venv when it gets bind-mounted in.
 from app.tasks import research as _research  # noqa: F401
 from app.tasks.broker import broker
 

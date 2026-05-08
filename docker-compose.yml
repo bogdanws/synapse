@@ -49,6 +49,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      # Anonymous volume so the host's ./backend/.venv (built against the host Python interpreter) doesn't shadow the image's own venv. Without it, uv tries to rebuild a venv it can't safely write to with the worker racing on the same path.
+      - /app/.venv
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -67,7 +69,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uv run taskiq worker app.tasks:broker --fs-discover
+      - /app/.venv
+    command: uv run taskiq worker app.tasks:broker
 
   frontend:
     build:
