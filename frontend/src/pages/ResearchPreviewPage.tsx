@@ -80,7 +80,7 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
         )}
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
-        {/* Edit is deferred to a later step */}
+        {/* Edit is deferred for now */}
         <button
           disabled
           style={{
@@ -359,7 +359,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
               .
             </h2>
             <div style={{ display: 'flex', gap: 8 }}>
-              {/* Add question is deferred to a later step */}
+              {/* Add question is deferred for now */}
               <Button variant="ghost" size="sm" disabled>
                 + Add question
               </Button>

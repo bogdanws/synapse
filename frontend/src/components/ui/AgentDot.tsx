@@ -8,7 +8,7 @@ interface AgentDotProps {
   /** Pixel size of the disc. Default 26 matches the editorial baseline. */
   size?: number
   className?: string
-  /** Soft halo behind the disc — used when the agent is the active step. */
+  /** Soft halo behind the disc — used when the agent is currently running. */
   halo?: boolean
 }
 

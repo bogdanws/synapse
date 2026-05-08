@@ -221,8 +221,8 @@ export default function JobProgressPage() {
           <span>{statusLabel}</span>
         </div>
 
-        {/* Cancel is a future capability; the job cancellation API lands in a later step. */}
-        {/* TODO(step-N): wire up job cancellation endpoint */}
+        {/* Cancel is a future capability; backend cancellation is not exposed yet. */}
+        {/* TODO: wire up job cancellation endpoint */}
         <Button variant="ghost" size="sm" disabled>
           Cancel
         </Button>

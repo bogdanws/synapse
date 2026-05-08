@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { Button } from '../components/ui/Button'
@@ -179,7 +179,13 @@ export default function ResearchInputPage() {
           </div>
           <nav className="flex gap-[18px]">
             <span className="label">New brief</span>
-            <span className="label text-muted">Library</span>
+            <Link
+              to="/history"
+              className="label text-muted"
+              style={{ textDecoration: 'none', color: 'var(--muted)' }}
+            >
+              Library
+            </Link>
             <span className="label text-muted">Sources</span>
             <span className="label text-muted">Settings</span>
           </nav>
@@ -316,7 +322,7 @@ export default function ResearchInputPage() {
           {/* Recent questions */}
           <div className="mt-12">
             <div className="micro mb-3.5">Or start from a recent question</div>
-            {/* TODO(step 25): replace static examples with follow-ups from history. */}
+            {/* TODO: replace static examples with follow-ups from history. */}
             <div className="grid grid-cols-2 border-t border-line-soft">
               {EXAMPLE_QUESTIONS.map((q, i) => (
                 <button

@@ -110,10 +110,11 @@ export default function ReportPage() {
           >
             Export · PDF
           </Button>
-          {/* Ask follow-up is wired in step 25 */}
-          <Button size="sm" style={{ padding: '6px 12px', fontSize: 11 }} disabled>
-            Ask follow-up →
-          </Button>
+          <Link to="/research/$jobId/follow-up" params={{ jobId }}>
+            <Button size="sm" style={{ padding: '6px 12px', fontSize: 11 }}>
+              Ask follow-up →
+            </Button>
+          </Link>
         </div>
       </div>
 

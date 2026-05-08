@@ -520,7 +520,7 @@
           "research"
         ],
         "summary": "Preview Research",
-        "description": "Run only Scout's decompose step and return the proposed sub-questions.\n\nNo job row is created and no work is queued. This is intentionally a\nsynchronous preview: the caller gets sub-questions back immediately so they\ncan review and drop them before committing to a full research run.",
+        "description": "Run only Scout's decompose call and return the proposed sub-questions.\n\nNo job row is created and no work is queued. This is intentionally a\nsynchronous preview: the caller gets sub-questions back immediately so they\ncan review and drop them before committing to a full research run.",
         "operationId": "preview_research_api_research_preview_post",
         "requestBody": {
           "content": {

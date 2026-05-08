@@ -11,6 +11,8 @@ import type { QueryClient } from '@tanstack/react-query'
 import { usersCurrentUserApiAuthUsersMeGet } from './types/api'
 import type { UserRead } from './types/api'
 
+import FollowUpPage from './pages/FollowUpPage'
+import HistoryPage from './pages/HistoryPage'
 import JobProgressPage from './pages/JobProgressPage'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -126,6 +128,24 @@ const reportRoute = createRoute({
   component: ReportPage,
 })
 
+const historyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/history',
+  beforeLoad: async ({ context, location }) => {
+    await requireAuth(context.queryClient, location.href)
+  },
+  component: HistoryPage,
+})
+
+const followUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/research/$jobId/follow-up',
+  beforeLoad: async ({ context, location }) => {
+    await requireAuth(context.queryClient, location.href)
+  },
+  component: FollowUpPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -134,6 +154,8 @@ const routeTree = rootRoute.addChildren([
   researchPreviewRoute,
   jobRoute,
   reportRoute,
+  historyRoute,
+  followUpRoute,
 ])
 
 export function createAppRouter(queryClient: QueryClient) {

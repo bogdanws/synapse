@@ -42,7 +42,7 @@ class ResearchRequest(BaseModel):
     depth: Depth = Depth.STANDARD
     # Per-agent model IDs keyed by agent name. Each `REQUIRED_MODEL_AGENTS` entry must be present and non-empty: the orchestrator looks up `job.models[agent]` per phase, and a missing key would fail mid-run rather than at request time.
     models: dict[str, str] = Field(...)
-    # Optional list of sub-questions from the preview step. When present, Scout skips its
+    # Optional list of sub-questions from the preview screen. When present, Scout skips its
     # decompose LLM call and uses these directly, so the run honours the user's approved plan.
     sub_questions: list[str] | None = None
 
