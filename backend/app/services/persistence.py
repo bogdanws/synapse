@@ -15,6 +15,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import orm
 from app.models.research import (
@@ -64,17 +65,17 @@ class JobRepository:
             orm.ResearchJob,
             job_id,
             options=[
-                # Eager-load the report and its annotation so we don't hit the
-                # database again per relationship access. Sources are already in
-                # the join because we sort them by short_id.
+                # Async ORM cannot perform implicit lazy IO on plain attribute
+                # access (`row.report`) outside SQLAlchemy's greenlet bridge.
+                # Eager-loading prevents MissingGreenlet in FastAPI handlers.
+                selectinload(orm.ResearchJob.report).selectinload(orm.Report.critic_annotation),
+                selectinload(orm.ResearchJob.sources),
             ],
         )
         if row is None:
             msg = f"research job {job_id} not found"
             raise JobNotFoundError(msg)
 
-        # Accessing the relationship triggers a lazy load; that's fine here
-        # because get_report is called at most once per request.
         report_row = row.report
         if report_row is None:
             msg = f"report for job {job_id} not yet available"
