@@ -47,6 +47,8 @@ _CLAIM_SPAN_RE = re.compile(
 _SYSTEM_PROMPT = """\
 You are a fact-checker. You will be given one section of a research report (in markdown, with each verifiable claim wrapped in `<span data-claim="...">...</span>`) plus the full pool of sources cited anywhere in the report.
 
+Each source includes a `Credibility` score in [0, 1] computed from the source domain and content signals. Weight evidence accordingly: a high-credibility source (≥ 0.7) can support or contradict a claim on its own; a low-credibility source (< 0.4) alone is not sufficient to return `contradicted` or `unsupported` — treat it as weak corroborating or dissenting signal only.
+
 Your job is to:
 
 1. For every `<span data-claim="<claim_id>">…</span>` in the section, return one entry in `claim_flags` with:
@@ -211,7 +213,8 @@ def _build_initial_prompt(
     sources: list[Source],
 ) -> str:
     source_block = "\n\n".join(
-        f"[{src.id}] {src.title}\nURL: {src.url}\nSnippet: {src.snippet}" for src in sources
+        f"[{src.id}] {src.title}\nURL: {src.url}\nCredibility: {src.credibility:.2f}\nSnippet: {src.snippet}"
+        for src in sources
     )
     return "\n\n".join(
         [
