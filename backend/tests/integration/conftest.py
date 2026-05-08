@@ -12,6 +12,7 @@ from sqlalchemy.pool import NullPool
 
 os.environ.setdefault("JWT_SECRET", "test-secret-min-32-chars-for-pytest-runs")
 os.environ.setdefault("COOKIE_SECURE", "false")
+os.environ.setdefault("APP_ENV", "test")
 
 import app.auth.models  # noqa: F401 - register User table with Base.metadata
 import app.models.orm  # noqa: F401 - register research domain tables
