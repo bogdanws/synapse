@@ -62,7 +62,11 @@ select = ["E", "F", "W", "I", "B", "UP", "N", "SIM"]
 # B008: FastAPI's dependency injection pattern uses Depends() in default
 # arguments by design; flagging it as a "function call in default" is a
 # false positive for this framework.
-ignore = ["B008"]
+ignore = [
+    "B008",
+    # E501 is suppressed so long comments can wrap at natural sentence boundaries rather than a fixed column. See AGENTS.md.
+    "E501",
+]
 
 [tool.ruff.lint.per-file-ignores]
 # Migration files are auto-generated; FK/index names make E501 unavoidable,
