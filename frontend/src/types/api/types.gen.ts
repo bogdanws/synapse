@@ -67,6 +67,18 @@ export type HttpValidationError = {
 export type JobStatus = 'pending' | 'scouting' | 'synthesizing' | 'critiquing' | 'completed' | 'failed';
 
 /**
+ * PreviewResponse
+ *
+ * Response body for POST /api/research/preview.
+ */
+export type PreviewResponse = {
+    /**
+     * Sub Questions
+     */
+    sub_questions: Array<string>;
+};
+
+/**
  * ResearchJob
  *
  * Job descriptor returned to the client on creation and status queries.
@@ -91,6 +103,10 @@ export type ResearchJob = {
     models?: {
         [key: string]: string;
     };
+    /**
+     * Sub Questions
+     */
+    sub_questions?: Array<string> | null;
     status?: JobStatus;
     /**
      * Progress
@@ -135,6 +151,10 @@ export type ResearchRequest = {
     models: {
         [key: string]: string;
     };
+    /**
+     * Sub Questions
+     */
+    sub_questions?: Array<string> | null;
 };
 
 /**
@@ -865,6 +885,31 @@ export type StartResearchApiResearchPostResponses = {
 };
 
 export type StartResearchApiResearchPostResponse = StartResearchApiResearchPostResponses[keyof StartResearchApiResearchPostResponses];
+
+export type PreviewResearchApiResearchPreviewPostData = {
+    body: ResearchRequest;
+    path?: never;
+    query?: never;
+    url: '/api/research/preview';
+};
+
+export type PreviewResearchApiResearchPreviewPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreviewResearchApiResearchPreviewPostError = PreviewResearchApiResearchPreviewPostErrors[keyof PreviewResearchApiResearchPreviewPostErrors];
+
+export type PreviewResearchApiResearchPreviewPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: PreviewResponse;
+};
+
+export type PreviewResearchApiResearchPreviewPostResponse = PreviewResearchApiResearchPreviewPostResponses[keyof PreviewResearchApiResearchPreviewPostResponses];
 
 export type HealthHealthGetData = {
     body?: never;

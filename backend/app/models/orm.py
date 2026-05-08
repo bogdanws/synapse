@@ -29,6 +29,9 @@ class ResearchJob(Base):
     depth: Mapped[str] = mapped_column(server_default="standard")
     # {"scout": "<model-id>", "scribe": "<model-id>", "critic": "<model-id>"}
     models: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # When the caller supplies sub-questions from the preview step we store them here and
+    # skip Scout's decompose phase, so the run honours the user's approved plan exactly.
+    sub_questions_override: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(server_default="pending", index=True)
     progress: Mapped[float] = mapped_column(server_default="0")
     error: Mapped[str | None] = mapped_column(Text)

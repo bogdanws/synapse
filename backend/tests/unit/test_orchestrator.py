@@ -219,7 +219,12 @@ def patched_orchestrator(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     }
 
     async def fake_run_scout(
-        *, job_id: UUID, topic: str, agent: object, publish: Callable[..., Awaitable[None]]
+        *,
+        job_id: UUID,
+        topic: str,
+        agent: object,
+        publish: Callable[..., Awaitable[None]],
+        sub_questions_override: list[str] | None = None,
     ) -> ScoutOutput:
         if config["scout_error"]:
             raise RuntimeError(config["scout_error"])

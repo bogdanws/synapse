@@ -16,6 +16,7 @@ import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ResearchInputPage from './pages/ResearchInputPage'
+import ResearchPreviewPage from './pages/ResearchPreviewPage'
 
 const authSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -97,6 +98,15 @@ const researchNewRoute = createRoute({
   component: ResearchInputPage,
 })
 
+const researchPreviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/research/preview',
+  beforeLoad: async ({ context, location }) => {
+    await requireAuth(context.queryClient, location.href)
+  },
+  component: ResearchPreviewPage,
+})
+
 const jobRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/research/$jobId',
@@ -111,6 +121,7 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   registerRoute,
   researchNewRoute,
+  researchPreviewRoute,
   jobRoute,
 ])
 
@@ -124,5 +135,17 @@ export function createAppRouter(queryClient: QueryClient) {
 declare module '@tanstack/react-router' {
   interface Register {
     router: ReturnType<typeof createAppRouter>
+  }
+}
+
+declare module '@tanstack/history' {
+  interface HistoryState {
+    formData?: {
+      topic: string
+      depth: 'shallow' | 'standard' | 'deep'
+      language: string
+      models: Record<string, string>
+    }
+    subQuestions?: string[]
   }
 }

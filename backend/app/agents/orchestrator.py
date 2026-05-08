@@ -16,7 +16,7 @@ Each node owns the side effects for its phase: status updates on the `research_j
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 from uuid import UUID
 
 import httpx
@@ -54,6 +54,7 @@ class GraphState(TypedDict):
 
     job_id: UUID
     topic: str
+    sub_questions_override: NotRequired[list[str]]
     sub_questions: NotRequired[list[str]]
     sources: NotRequired[list[Source]]
     report: NotRequired[ScribeReport]
@@ -80,6 +81,7 @@ def _build_graph(
                 topic=state["topic"],
                 agent=scout_agent,
                 publish=publish,
+                sub_questions_override=state.get("sub_questions_override") or None,
             )
             async with session_factory() as session:
                 repo = JobRepository(session)
@@ -184,17 +186,19 @@ async def run_pipeline(
         )
 
         try:
-            final_state = await runner({"job_id": job_id, "topic": job.topic})
+            initial: GraphState = {"job_id": job_id, "topic": job.topic}
+            if job.sub_questions:
+                initial["sub_questions_override"] = job.sub_questions
+            final_state = await runner(initial)
         except Exception as exc:
             # Defensive: an exception escaping a node means the node's own
             # try/except missed something. Treat it the same as a recorded
             # error so the job lands in `failed` rather than wedged in flight.
             _log.exception("pipeline_unhandled_exception", job_id=str(job_id))
-            final_state = {
-                "job_id": job_id,
-                "topic": job.topic,
-                "error": f"pipeline crashed: {exc}",
-            }
+            final_state = cast(
+                GraphState,
+                {"job_id": job_id, "topic": job.topic, "error": f"pipeline crashed: {exc}"},
+            )
 
         if "error" in final_state and final_state["error"]:
             await _persist_failure(session_factory, job_id, final_state["error"])

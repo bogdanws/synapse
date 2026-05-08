@@ -1,15 +1,17 @@
-"""Tests for POST /api/research."""
+"""Tests for POST /api/research and POST /api/research/preview."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
+from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.agents.scout import ScoutValidationError
 from app.auth.dependencies import current_active_user
 from app.db.session import get_db
 from app.main import app
@@ -149,5 +151,69 @@ async def test_start_research_rejects_incomplete_models(
 ) -> None:
     response = await authed_client.post(
         "/api/research", json={"topic": "Quantum computing", "models": incomplete_models}
+    )
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /api/research/preview
+# ---------------------------------------------------------------------------
+
+_PREVIEW_BODY = {"topic": "Quantum computing", "models": _VALID_MODELS}
+
+
+@pytest.fixture
+async def authed_client_no_db() -> AsyncIterator[AsyncClient]:
+    """Authenticated client without any DB override — preview needs no DB."""
+
+    async def _fake_current_active_user() -> Any:
+        return type(
+            "FakeUser",
+            (),
+            {"id": uuid4(), "email": "test@example.com", "is_active": True},
+        )()
+
+    app.dependency_overrides[current_active_user] = _fake_current_active_user
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        app.dependency_overrides.pop(current_active_user, None)
+
+
+async def test_preview_requires_auth(client: AsyncClient) -> None:
+    response = await client.post("/api/research/preview", json=_PREVIEW_BODY)
+    assert response.status_code == 401
+
+
+async def test_preview_returns_sub_questions(authed_client_no_db: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.ScoutAgent.decompose",
+        new=AsyncMock(return_value=["Q1?", "Q2?", "Q3?"]),
+    ):
+        response = await authed_client_no_db.post("/api/research/preview", json=_PREVIEW_BODY)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body["sub_questions"], list)
+    assert len(body["sub_questions"]) > 0
+    assert all(isinstance(q, str) for q in body["sub_questions"])
+
+
+async def test_preview_handles_scout_validation_error(authed_client_no_db: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.ScoutAgent.decompose",
+        new=AsyncMock(side_effect=ScoutValidationError("bad")),
+    ):
+        response = await authed_client_no_db.post("/api/research/preview", json=_PREVIEW_BODY)
+
+    assert response.status_code == 422
+    assert "sub-questions" in response.json()["detail"]
+
+
+async def test_preview_rejects_missing_models(authed_client_no_db: AsyncClient) -> None:
+    response = await authed_client_no_db.post(
+        "/api/research/preview", json={"topic": "Quantum computing"}
     )
     assert response.status_code == 422

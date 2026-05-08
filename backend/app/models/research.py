@@ -42,6 +42,9 @@ class ResearchRequest(BaseModel):
     depth: Depth = Depth.STANDARD
     # Per-agent model IDs keyed by agent name. Each `REQUIRED_MODEL_AGENTS` entry must be present and non-empty: the orchestrator looks up `job.models[agent]` per phase, and a missing key would fail mid-run rather than at request time.
     models: dict[str, str] = Field(...)
+    # Optional list of sub-questions from the preview step. When present, Scout skips its
+    # decompose LLM call and uses these directly, so the run honours the user's approved plan.
+    sub_questions: list[str] | None = None
 
     @model_validator(mode="after")
     def _require_all_agent_models(self) -> ResearchRequest:
@@ -60,6 +63,7 @@ class ResearchJob(BaseModel):
     language: str = "en"
     depth: Depth = Depth.STANDARD
     models: dict[str, str] = Field(default_factory=dict)
+    sub_questions: list[str] | None = None
     status: JobStatus = JobStatus.PENDING
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
     error: str | None = None
@@ -158,3 +162,9 @@ class VerifiedReport(BaseModel):
     job: ResearchJob
     report: ScribeReport
     annotations: CriticAnnotations
+
+
+class PreviewResponse(BaseModel):
+    """Response body for POST /api/research/preview."""
+
+    sub_questions: list[str]

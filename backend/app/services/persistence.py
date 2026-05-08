@@ -134,6 +134,7 @@ def _to_research_job(row: orm.ResearchJob) -> ResearchJobModel:
         language=row.language,
         depth=row.depth,  # type: ignore[arg-type]
         models=row.models,
+        sub_questions=row.sub_questions_override,
         status=JobStatus(row.status),
         progress=row.progress,
         error=row.error,

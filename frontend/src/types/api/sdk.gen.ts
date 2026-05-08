@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AuthCookieLoginApiAuthLoginPostData, AuthCookieLoginApiAuthLoginPostErrors, AuthCookieLoginApiAuthLoginPostResponses, AuthCookieLogoutApiAuthLogoutPostData, AuthCookieLogoutApiAuthLogoutPostErrors, AuthCookieLogoutApiAuthLogoutPostResponses, HealthHealthGetData, HealthHealthGetResponses, RegisterRegisterApiAuthRegisterPostData, RegisterRegisterApiAuthRegisterPostErrors, RegisterRegisterApiAuthRegisterPostResponses, StartResearchApiResearchPostData, StartResearchApiResearchPostErrors, StartResearchApiResearchPostResponses, UsersCurrentUserApiAuthUsersMeGetData, UsersCurrentUserApiAuthUsersMeGetErrors, UsersCurrentUserApiAuthUsersMeGetResponses, UsersDeleteUserApiAuthUsersIdDeleteData, UsersDeleteUserApiAuthUsersIdDeleteErrors, UsersDeleteUserApiAuthUsersIdDeleteResponses, UsersPatchCurrentUserApiAuthUsersMePatchData, UsersPatchCurrentUserApiAuthUsersMePatchErrors, UsersPatchCurrentUserApiAuthUsersMePatchResponses, UsersPatchUserApiAuthUsersIdPatchData, UsersPatchUserApiAuthUsersIdPatchErrors, UsersPatchUserApiAuthUsersIdPatchResponses, UsersUserApiAuthUsersIdGetData, UsersUserApiAuthUsersIdGetErrors, UsersUserApiAuthUsersIdGetResponses } from './types.gen';
+import type { AuthCookieLoginApiAuthLoginPostData, AuthCookieLoginApiAuthLoginPostErrors, AuthCookieLoginApiAuthLoginPostResponses, AuthCookieLogoutApiAuthLogoutPostData, AuthCookieLogoutApiAuthLogoutPostErrors, AuthCookieLogoutApiAuthLogoutPostResponses, HealthHealthGetData, HealthHealthGetResponses, PreviewResearchApiResearchPreviewPostData, PreviewResearchApiResearchPreviewPostErrors, PreviewResearchApiResearchPreviewPostResponses, RegisterRegisterApiAuthRegisterPostData, RegisterRegisterApiAuthRegisterPostErrors, RegisterRegisterApiAuthRegisterPostResponses, StartResearchApiResearchPostData, StartResearchApiResearchPostErrors, StartResearchApiResearchPostResponses, UsersCurrentUserApiAuthUsersMeGetData, UsersCurrentUserApiAuthUsersMeGetErrors, UsersCurrentUserApiAuthUsersMeGetResponses, UsersDeleteUserApiAuthUsersIdDeleteData, UsersDeleteUserApiAuthUsersIdDeleteErrors, UsersDeleteUserApiAuthUsersIdDeleteResponses, UsersPatchCurrentUserApiAuthUsersMePatchData, UsersPatchCurrentUserApiAuthUsersMePatchErrors, UsersPatchCurrentUserApiAuthUsersMePatchResponses, UsersPatchUserApiAuthUsersIdPatchData, UsersPatchUserApiAuthUsersIdPatchErrors, UsersPatchUserApiAuthUsersIdPatchResponses, UsersUserApiAuthUsersIdGetData, UsersUserApiAuthUsersIdGetErrors, UsersUserApiAuthUsersIdGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -143,6 +143,29 @@ export const startResearchApiResearchPost = <ThrowOnError extends boolean = fals
             type: 'apiKey'
         }],
     url: '/api/research',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Preview Research
+ *
+ * Run only Scout's decompose step and return the proposed sub-questions.
+ *
+ * No job row is created and no work is queued. This is intentionally a
+ * synchronous preview: the caller gets sub-questions back immediately so they
+ * can review and drop them before committing to a full research run.
+ */
+export const previewResearchApiResearchPreviewPost = <ThrowOnError extends boolean = false>(options: Options<PreviewResearchApiResearchPreviewPostData, ThrowOnError>) => (options.client ?? client).post<PreviewResearchApiResearchPreviewPostResponses, PreviewResearchApiResearchPreviewPostErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'synapse_auth',
+            type: 'apiKey'
+        }],
+    url: '/api/research/preview',
     ...options,
     headers: {
         'Content-Type': 'application/json',

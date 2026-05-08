@@ -11,6 +11,7 @@ import { Pill } from '../components/Pill'
 import { ConfidenceBar } from '../components/ConfidenceBar'
 import { useMe } from '../hooks/useMe'
 import { useAgentModels } from '../hooks/useAgentModels'
+import { usePreviewResearch } from '../hooks/usePreviewResearch'
 import { useResearchHistory } from '../hooks/useResearchHistory'
 import { useStartResearch } from '../hooks/useStartResearch'
 import { ApiError } from '../services/api'
@@ -65,6 +66,7 @@ export default function ResearchInputPage() {
   const { models, setModel, persist } = useAgentModels()
   const history = useResearchHistory()
   const startResearch = useStartResearch()
+  const previewResearch = usePreviewResearch()
 
   const {
     register,
@@ -132,11 +134,37 @@ export default function ResearchInputPage() {
     [setValue],
   )
 
+  const onPreview: SubmitHandler<FormData> = useCallback(
+    async (data) => {
+      try {
+        const result = await previewResearch.mutateAsync({
+          topic: data.topic.trim(),
+          depth: data.depth,
+          language: data.language,
+          models: data.models,
+        })
+        await navigate({
+          to: '/research/preview',
+          state: (prev) => ({ ...prev, formData: data, subQuestions: result.sub_questions }),
+        })
+      } catch (err) {
+        if (!(err instanceof ApiError)) {
+          throw err
+        }
+      }
+    },
+    [previewResearch, navigate],
+  )
+
   const briefCount = history.data?.length ?? 0
 
   const submitError = startResearch.error
   const showErrorInline =
     submitError instanceof ApiError && (submitError.status === 422 || submitError.status === 429)
+
+  const previewError = previewResearch.error
+  const showPreviewErrorInline =
+    previewError instanceof ApiError && (previewError.status === 422 || previewError.status === 429)
 
   const { ref: topicRef, ...topicRest } = register('topic')
 
@@ -247,9 +275,13 @@ export default function ResearchInputPage() {
                 <Button variant="ghost" size="sm" disabled>
                   + Constraint
                 </Button>
-                {/* TODO(step 20): enable when preview plan endpoint is ready. */}
-                <Button variant="ghost" size="sm" disabled>
-                  Preview plan →
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={previewResearch.isPending}
+                  onClick={handleSubmit(onPreview)}
+                >
+                  {previewResearch.isPending ? 'Generating plan...' : 'Preview plan →'}
                 </Button>
               </div>
             </div>
@@ -271,6 +303,11 @@ export default function ResearchInputPage() {
               {showErrorInline && (
                 <span className="text-[12px] text-critic" role="alert">
                   {submitError.message}
+                </span>
+              )}
+              {showPreviewErrorInline && (
+                <span className="text-[12px] text-critic" role="alert">
+                  {previewError.message}
                 </span>
               )}
             </div>

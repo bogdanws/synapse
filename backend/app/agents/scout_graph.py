@@ -50,14 +50,23 @@ async def run_scout(
     topic: str,
     agent: ScoutAgent,
     publish: EventPublisher = default_publish,
+    sub_questions_override: list[str] | None = None,
 ) -> ScoutOutput:
     """Execute Scout end-to-end and emit progress events.
 
     Searches each sub-question concurrently — Exa rate limits per request, not per second, so issuing them in parallel is safe and meaningfully cuts latency on deeper runs.
+
+    When `sub_questions_override` is supplied (user approved a preview plan), the decompose
+    LLM call is skipped entirely and the provided questions are used as-is, preserving the
+    user's approved plan rather than generating a new decomposition.
     """
-    sub_questions = await agent.decompose(topic)
+    if sub_questions_override:
+        sub_questions = sub_questions_override
+        _log.info("scout_using_override", job_id=str(job_id), count=len(sub_questions))
+    else:
+        sub_questions = await agent.decompose(topic)
+        _log.info("scout_decomposed", job_id=str(job_id), count=len(sub_questions))
     await publish(SubQuestionsGenerated(job_id=job_id, sub_questions=sub_questions))
-    _log.info("scout_decomposed", job_id=str(job_id), count=len(sub_questions))
 
     raw_per_question = await asyncio.gather(
         *(agent.search(q) for q in sub_questions),
