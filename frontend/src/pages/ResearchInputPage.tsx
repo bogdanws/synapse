@@ -1,10 +1,11 @@
+import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+
 import TopicForm from '../components/TopicForm'
-import { api, ApiError } from '../services/api'
-import type { ResearchJob } from '../types/api'
+import { ApiError, api } from '../services/api'
 
 export default function ResearchInputPage() {
-  const [job, setJob] = useState<ResearchJob | null>(null)
+  const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -12,8 +13,8 @@ export default function ResearchInputPage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await api.startResearch({ topic })
-      setJob(result)
+      const job = await api.startResearch({ topic })
+      await navigate({ to: '/research/$jobId', params: { jobId: job.id } })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unexpected error')
     } finally {
@@ -25,12 +26,6 @@ export default function ResearchInputPage() {
     <main>
       <TopicForm onSubmit={handleSubmit} disabled={loading} />
       {error && <p role="alert">{error}</p>}
-      {job && (
-        <section aria-live="polite">
-          <p>id: {job.id}</p>
-          <p>status: {job.status}</p>
-        </section>
-      )}
     </main>
   )
 }

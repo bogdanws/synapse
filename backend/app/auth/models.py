@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+# Direct import: the `fastapi_users.db` re-export shim swallows ImportErrors and breaks under alembic's import order
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column
 

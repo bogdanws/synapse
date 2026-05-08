@@ -13,6 +13,7 @@ from app.models.research import (
     ResearchJob,
     ResearchRequest,
 )
+from app.tasks.research import run_research_pipeline
 
 router = APIRouter(dependencies=[Depends(current_active_user)])
 
@@ -25,11 +26,12 @@ router = APIRouter(dependencies=[Depends(current_active_user)])
 )
 @limiter.limit("4/minute")
 async def start_research(request: Request, payload: ResearchRequest) -> ResearchJob:
-    """Queue a new research job.
+    """Queue a new research job and hand it off to the worker.
 
-    TODO: persist job to DB, push to taskiq, hand off to orchestrator.
+    Persistence to Postgres is wired in a later change; for now the job descriptor is returned synthetically and the heavy work runs in the taskiq worker process.
     """
     job_id: UUID = uuid4()
+    await run_research_pipeline.kiq(job_id)
     return ResearchJob(
         id=job_id,
         topic=payload.topic,
