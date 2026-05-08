@@ -1,1 +1,269 @@
+/*
+ * Synapse design tokens
+ * Editorial / research aesthetic: ivory + ink, Fraunces display, Inter Tight UI,
+ * JetBrains Mono. Agent identities use OKLCH so the soft / accent variants
+ * stay perceptually balanced in light and dark.
+ *
+ * Light is the default. Dark mode opts in via `data-theme="dark"` on <html>.
+ * Tokens are surfaced both as CSS variables (for arbitrary inline use, e.g.
+ * `style={{ color: 'var(--scout)' }}` mirroring example_frontend) and as
+ * Tailwind v4 @theme entries so utility classes like `bg-ivory text-ink`
+ * are also available.
+ */
+
 @import 'tailwindcss';
+
+/* Theme variant: enable `dark:` utilities driven by [data-theme="dark"] on
+ * any ancestor, so we don't depend on the OS preference unless we choose to.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  /* Surface scale */
+  --ivory: #f5f1e8;
+  --ivory-2: #ede8dc;
+  --ivory-3: #e2dbc9;
+  --ink: #0f0f0e;
+  --ink-2: #1f1e1b;
+  --ink-3: #3a3833;
+  --muted: #6b675e;
+  --rule: #c9c2b0;
+  --rule-soft: #dcd5c2;
+
+  /* Agent identities (light) */
+  --scout: oklch(0.55 0.14 240);
+  --scout-soft: oklch(0.55 0.14 240 / 0.1);
+  --scribe: oklch(0.55 0.13 60);
+  --scribe-soft: oklch(0.55 0.13 60 / 0.12);
+  --critic: oklch(0.5 0.17 25);
+  --critic-soft: oklch(0.5 0.17 25 / 0.1);
+
+  /* Semantic aliases — components reference these, not the raw scale, so
+   * dark mode swaps just by overriding the alias targets below. */
+  --bg: var(--ivory);
+  --bg-2: var(--ivory-2);
+  --bg-3: var(--ivory-3);
+  --fg: var(--ink);
+  --fg-2: var(--ink-2);
+  --fg-3: var(--ink-3);
+  --line: var(--rule);
+  --line-soft: var(--rule-soft);
+
+  /* Type stacks */
+  --serif: 'Fraunces', 'Times New Roman', serif;
+  --sans: 'Inter Tight', 'Helvetica Neue', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+[data-theme='dark'] {
+  --bg: #0e0e0c;
+  --bg-2: #16160f;
+  --bg-3: #1f1e16;
+  --fg: #f1ecdf;
+  --fg-2: #d9d3c2;
+  --fg-3: #9a9484;
+  --muted: #7e7867;
+  --line: #2d2b22;
+  --line-soft: #232118;
+
+  --scout: oklch(0.72 0.14 240);
+  --scout-soft: oklch(0.72 0.14 240 / 0.14);
+  --scribe: oklch(0.78 0.14 75);
+  --scribe-soft: oklch(0.78 0.14 75 / 0.16);
+  --critic: oklch(0.68 0.17 25);
+  --critic-soft: oklch(0.68 0.17 25 / 0.14);
+}
+
+/*
+ * Bridge tokens into Tailwind v4 so utility classes work alongside the raw
+ * CSS variables. `inline` keeps the values dynamic — utilities resolve to
+ * `var(--bg)` etc., so they react to the dark-mode override above.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-scout: var(--scout);
+  --color-scout-soft: var(--scout-soft);
+  --color-scribe: var(--scribe);
+  --color-scribe-soft: var(--scribe-soft);
+  --color-critic: var(--critic);
+  --color-critic-soft: var(--critic-soft);
+
+  --font-serif: var(--serif);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+
+  /* No rounded corners by default — the editorial system uses sharp edges.
+   * Components opt into curvature explicitly via `rounded-full` etc. */
+  --radius-DEFAULT: 0;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    background: var(--bg);
+    color: var(--fg);
+  }
+
+  body {
+    font-family: var(--sans);
+    /* `ss01` activates Inter Tight's stylistic alternates; `cv11` is the
+     * single-storey 'a' — both small refinements that read more editorial. */
+    font-feature-settings: 'ss01', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+  }
+
+  /* Fraunces benefits from optical sizing on display copy.
+   * SOFT/WONK variation axes calm the default contrast. */
+  .serif,
+  .font-serif {
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    font-variation-settings:
+      'SOFT' 50,
+      'WONK' 0;
+  }
+}
+
+@layer components {
+  /* Editorial micro-text used for section labels, captions, page numbers. */
+  .micro {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* 1px rules are the system's primary divider; never use shadows. */
+  .rule {
+    border-bottom: 1px solid var(--line);
+  }
+  .rule-t {
+    border-top: 1px solid var(--line);
+  }
+
+  /* Agent identity disc — three sizes used across the app, scaled via inline
+   * style on the call site. Default is the 26px version from tokens.jsx. */
+  .agent-dot {
+    width: 26px;
+    height: 26px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 13px;
+    color: white;
+    flex-shrink: 0;
+  }
+  .agent-dot.scout {
+    background: var(--scout);
+  }
+  /* Scribe's amber background needs ink text for contrast — the only agent
+   * that doesn't take white. Lock this in tokens, not at the call site. */
+  .agent-dot.scribe {
+    background: var(--scribe);
+    color: var(--ink);
+  }
+  .agent-dot.critic {
+    background: var(--critic);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 9999px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-2);
+    background: var(--bg);
+  }
+  .chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .chip.scout {
+    color: var(--scout);
+    border-color: var(--scout);
+  }
+  .chip.scribe {
+    color: var(--scribe);
+    border-color: var(--scribe);
+  }
+  .chip.critic {
+    color: var(--critic);
+    border-color: var(--critic);
+  }
+
+  /* Pulse indicator used by live status / "in progress" markers. */
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  /* Thin custom scrollbar — webkit only, harmless on others. */
+  .scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
+  }
+  .scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes type-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
