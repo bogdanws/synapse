@@ -51,6 +51,24 @@ services:
       - ./backend:/app
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uv run taskiq worker app.tasks:broker --fs-discover
+
   frontend:
     build:
       context: ./frontend

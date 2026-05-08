@@ -132,9 +132,9 @@ export const usersPatchUserApiAuthUsersIdPatch = <ThrowOnError extends boolean =
 /**
  * Start Research
  *
- * Queue a new research job.
+ * Queue a new research job and hand it off to the worker.
  *
- * TODO: persist job to DB, push to taskiq, hand off to orchestrator.
+ * Persistence to Postgres is wired in a later change; for now the job descriptor is returned synthetically and the heavy work runs in the taskiq worker process.
  */
 export const startResearchApiResearchPost = <ThrowOnError extends boolean = false>(options: Options<StartResearchApiResearchPostData, ThrowOnError>) => (options.client ?? client).post<StartResearchApiResearchPostResponses, StartResearchApiResearchPostErrors, ThrowOnError>({
     security: [{

@@ -473,7 +473,7 @@
           "research"
         ],
         "summary": "Start Research",
-        "description": "Queue a new research job.\n\nTODO: persist job to DB, push to taskiq, hand off to orchestrator.",
+        "description": "Queue a new research job and hand it off to the worker.\n\nPersistence to Postgres is wired in a later change; for now the job descriptor is returned synthetically and the heavy work runs in the taskiq worker process.",
         "operationId": "start_research_api_research_post",
         "requestBody": {
           "content": {

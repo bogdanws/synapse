@@ -16,14 +16,22 @@ from app.auth.routes import router as auth_router
 from app.config import get_settings
 from app.logging import RequestIDMiddleware, configure_logging
 from app.middleware.ratelimit import limiter
+from app.tasks import broker
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Application lifespan: place to wire DB/Redis connections."""
-    # TODO: initialise DB engine, Redis client, agent pipeline
-    yield
-    # TODO: graceful shutdown
+    """Application lifespan: starts/stops the taskiq broker for the API process.
+
+    The worker process manages its own broker lifecycle through the taskiq CLI, so we guard on `is_worker_process` to avoid double-start when this module is imported by `taskiq worker`.
+    """
+    if not broker.is_worker_process:
+        await broker.startup()
+    try:
+        yield
+    finally:
+        if not broker.is_worker_process:
+            await broker.shutdown()
 
 
 def create_app() -> FastAPI:
