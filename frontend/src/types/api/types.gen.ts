@@ -67,11 +67,11 @@ export type HttpValidationError = {
 export type JobStatus = 'pending' | 'scouting' | 'synthesizing' | 'critiquing' | 'completed' | 'failed';
 
 /**
- * ResearchJobResponse
+ * ResearchJob
  *
- * Job descriptor returned to the client.
+ * Job descriptor returned to the client on creation and status queries.
  */
-export type ResearchJobResponse = {
+export type ResearchJob = {
     /**
      * Id
      */
@@ -80,15 +80,38 @@ export type ResearchJobResponse = {
      * Topic
      */
     topic: string;
-    status: JobStatus;
+    /**
+     * Language
+     */
+    language?: string;
+    depth?: Depth;
+    /**
+     * Models
+     */
+    models?: {
+        [key: string]: string;
+    };
+    status?: JobStatus;
     /**
      * Progress
      */
     progress?: number;
     /**
+     * Error
+     */
+    error?: string | null;
+    /**
      * Created At
      */
     created_at?: string;
+    /**
+     * Updated At
+     */
+    updated_at?: string;
+    /**
+     * Completed At
+     */
+    completed_at?: string | null;
 };
 
 /**
@@ -106,6 +129,12 @@ export type ResearchRequest = {
      */
     language?: string;
     depth?: Depth;
+    /**
+     * Models
+     */
+    models?: {
+        [key: string]: string;
+    };
 };
 
 /**
@@ -509,7 +538,7 @@ export type StartResearchApiResearchPostResponses = {
     /**
      * Successful Response
      */
-    202: ResearchJobResponse;
+    202: ResearchJob;
 };
 
 export type StartResearchApiResearchPostResponse = StartResearchApiResearchPostResponses[keyof StartResearchApiResearchPostResponses];

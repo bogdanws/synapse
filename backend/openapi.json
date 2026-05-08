@@ -473,7 +473,7 @@
           "research"
         ],
         "summary": "Start Research",
-        "description": "Queue a new research job.\n\nTODO: persist job to DB, push to Redis queue, hand off to orchestrator.",
+        "description": "Queue a new research job.\n\nTODO: persist job to DB, push to taskiq, hand off to orchestrator.",
         "operationId": "start_research_api_research_post",
         "requestBody": {
           "content": {
@@ -491,7 +491,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ResearchJobResponse"
+                  "$ref": "#/components/schemas/ResearchJob"
                 }
               }
             }
@@ -653,7 +653,7 @@
         ],
         "title": "JobStatus"
       },
-      "ResearchJobResponse": {
+      "ResearchJob": {
         "properties": {
           "id": {
             "type": "string",
@@ -664,8 +664,25 @@
             "type": "string",
             "title": "Topic"
           },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "en"
+          },
+          "depth": {
+            "$ref": "#/components/schemas/Depth",
+            "default": "standard"
+          },
+          "models": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Models"
+          },
           "status": {
-            "$ref": "#/components/schemas/JobStatus"
+            "$ref": "#/components/schemas/JobStatus",
+            "default": "pending"
           },
           "progress": {
             "type": "number",
@@ -674,20 +691,47 @@
             "title": "Progress",
             "default": 0.0
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "topic",
-          "status"
+          "topic"
         ],
-        "title": "ResearchJobResponse",
-        "description": "Job descriptor returned to the client."
+        "title": "ResearchJob",
+        "description": "Job descriptor returned to the client on creation and status queries."
       },
       "ResearchRequest": {
         "properties": {
@@ -707,6 +751,13 @@
           "depth": {
             "$ref": "#/components/schemas/Depth",
             "default": "standard"
+          },
+          "models": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Models"
           }
         },
         "type": "object",

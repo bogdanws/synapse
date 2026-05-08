@@ -134,7 +134,7 @@ export const usersPatchUserApiAuthUsersIdPatch = <ThrowOnError extends boolean =
  *
  * Queue a new research job.
  *
- * TODO: persist job to DB, push to Redis queue, hand off to orchestrator.
+ * TODO: persist job to DB, push to taskiq, hand off to orchestrator.
  */
 export const startResearchApiResearchPost = <ThrowOnError extends boolean = false>(options: Options<StartResearchApiResearchPostData, ThrowOnError>) => (options.client ?? client).post<StartResearchApiResearchPostResponses, StartResearchApiResearchPostErrors, ThrowOnError>({
     url: '/api/research',
