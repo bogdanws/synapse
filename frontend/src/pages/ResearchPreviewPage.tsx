@@ -1,24 +1,12 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { z } from 'zod'
 
 import { Button } from '../components/ui/Button'
 import { SynapseMark } from '../components/ui/SynapseMark'
 import { usePreviewResearch } from '../hooks/usePreviewResearch'
 import { useStartResearch } from '../hooks/useStartResearch'
 import { ApiError } from '../services/api'
-
-const previewStateSchema = z.object({
-  formData: z.object({
-    topic: z.string(),
-    depth: z.enum(['shallow', 'standard', 'deep']),
-    language: z.string(),
-    models: z.record(z.string(), z.string()),
-  }),
-  subQuestions: z.array(z.string()).min(1),
-})
-
-type PreviewState = z.infer<typeof previewStateSchema>
+import { previewStateSchema, type PreviewState } from './researchPreviewState'
 
 const DEPTH_LABELS: Record<string, string> = {
   shallow: 'Shallow',
@@ -170,12 +158,22 @@ export default function ResearchPreviewPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Validate state passed via router navigation; redirect on bad/missing state.
+  // Router-level `beforeLoad` already redirects on missing/invalid state, so
+  // in production this parse always succeeds. The defensive fallback exists
+  // for tests that render the component without a router and for the rare
+  // case of a stale tab where the schema has drifted; the redirect runs from
+  // an effect rather than during render to avoid a "state update during
+  // render" warning under StrictMode.
   const rawState = (location.state ?? {}) as unknown
   const parsed = previewStateSchema.safeParse(rawState)
 
+  useEffect(() => {
+    if (!parsed.success) {
+      void navigate({ to: '/research/new' })
+    }
+  }, [parsed.success, navigate])
+
   if (!parsed.success) {
-    void navigate({ to: '/research/new' })
     return null
   }
 
@@ -225,8 +223,17 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
 
   const handleLaunch = useCallback(async () => {
     setLaunchError(null)
+    const kept = subQuestions.filter((_, i) => !dropped.has(i))
+    if (kept.length === 0) {
+      // Belt-and-braces: the launch button is disabled in this state, but a
+      // direct keyboard activation could still fire. The backend currently
+      // coerces `[]` to `None` (sub_questions_override falsy → re-decompose),
+      // which would silently ignore the user's "drop everything" intent. Keep
+      // the override decision client-side and surface an inline message.
+      setLaunchError('Keep at least one sub-question, or go back to the brief.')
+      return
+    }
     try {
-      const kept = subQuestions.filter((_, i) => !dropped.has(i))
       const job = await startResearch.mutateAsync({
         topic: formData.topic,
         depth: formData.depth,
@@ -474,7 +481,10 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           <Button variant="ghost" onClick={() => void navigate({ to: '/research/new' })}>
             ← Back to brief
           </Button>
-          <Button disabled={startResearch.isPending} onClick={() => void handleLaunch()}>
+          <Button
+            disabled={startResearch.isPending || keptCount === 0}
+            onClick={() => void handleLaunch()}
+          >
             {startResearch.isPending ? 'Launching...' : 'Approve & launch agents →'}
           </Button>
         </div>

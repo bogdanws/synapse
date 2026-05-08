@@ -153,7 +153,7 @@ export const startResearchApiResearchPost = <ThrowOnError extends boolean = fals
 /**
  * Preview Research
  *
- * Run only Scout's decompose call and return the proposed sub-questions.
+ * Run only Scout's decompose step and return the proposed sub-questions.
  *
  * No job row is created and no work is queued. This is intentionally a
  * synchronous preview: the caller gets sub-questions back immediately so they

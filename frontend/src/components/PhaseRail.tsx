@@ -4,6 +4,10 @@ import type { CurrentPhase } from '../hooks/useDerivedJobState'
 
 interface PhaseRailProps {
   currentPhase: CurrentPhase
+  /** Whether Scout finished its handoff before the current state was reached. Used to render accurate progress on `failed`. */
+  scoutComplete: boolean
+  /** Whether Scribe finished its handoff before the current state was reached. Used to render accurate progress on `failed`. */
+  scribeComplete: boolean
   /** Shown when the job has just completed — brief flash before navigation. */
   completionMessage?: string
 }
@@ -47,13 +51,23 @@ const STOPS: PhaseStop[] = [
 function stopStatus(
   key: 'scout' | 'scribe' | 'critic',
   currentPhase: CurrentPhase,
+  scoutComplete: boolean,
+  scribeComplete: boolean,
 ): 'done' | 'active' | 'queue' {
   const order: Array<'scout' | 'scribe' | 'critic'> = ['scout', 'scribe', 'critic']
   const idx = order.indexOf(key)
-  if (currentPhase === 'done' || currentPhase === 'failed') {
-    // All three phases ran if we reached done/failed; show all as done for 'done',
-    // or mark the current one as active for 'failed' (Critic might not have run).
-    return currentPhase === 'done' ? 'done' : idx <= order.indexOf('critic') ? 'done' : 'queue'
+  if (currentPhase === 'done') {
+    return 'done'
+  }
+  if (currentPhase === 'failed') {
+    // We don't know which phase raised the error from `currentPhase` alone, so
+    // derive it from the completion flags: the first phase that hadn't handed
+    // off is the one that broke. Phases before it ran to completion; phases
+    // after it never started.
+    const failedIdx = !scoutComplete ? 0 : !scribeComplete ? 1 : 2
+    if (idx < failedIdx) return 'done'
+    if (idx === failedIdx) return 'active'
+    return 'queue'
   }
   const currentIdx = order.indexOf(currentPhase as 'scout' | 'scribe' | 'critic')
   if (idx < currentIdx) return 'done'
@@ -61,7 +75,12 @@ function stopStatus(
   return 'queue'
 }
 
-export function PhaseRail({ currentPhase, completionMessage }: PhaseRailProps) {
+export function PhaseRail({
+  currentPhase,
+  scoutComplete,
+  scribeComplete,
+  completionMessage,
+}: PhaseRailProps) {
   return (
     <div
       className="border-b border-line px-8 py-5"
@@ -94,7 +113,7 @@ export function PhaseRail({ currentPhase, completionMessage }: PhaseRailProps) {
         />
 
         {STOPS.map((stop) => {
-          const status = stopStatus(stop.key, currentPhase)
+          const status = stopStatus(stop.key, currentPhase, scoutComplete, scribeComplete)
           const meta = AGENTS[stop.key]
           const isDone = status === 'done'
           const isActive = status === 'active'

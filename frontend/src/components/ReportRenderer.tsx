@@ -1,10 +1,30 @@
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
+import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 
 import type { ClaimFlag, ReportSection } from '../types/api'
 import { Tooltip } from './ui/Tooltip'
 import { cn } from './ui/cn'
+
+/**
+ * Allow-list for raw HTML in Scribe's markdown output. Scribe wraps every
+ * verifiable claim in `<span data-claim="secN.cM">…</span>` so the Critic and
+ * the renderer can correlate flags with claims; everything else (script
+ * tags, event handlers, alternative tags) is stripped. Web-search content
+ * fed to the LLM is untrusted, so without this gate `rehypeRaw` would render
+ * any injected `<script>` or `onerror=…` attribute live in the user's
+ * browser. The schema starts from GitHub's defaults and only extends `span`
+ * to permit `data-*` (encoded as the `'data*'` wildcard per
+ * `hast-util-sanitize`).
+ */
+const claimSpanSchema: SanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [...(defaultSchema.attributes?.span ?? []), 'data*'],
+  },
+}
 
 interface ClaimHighlightProps {
   id: string
@@ -61,7 +81,9 @@ export function ReportRenderer({ section, claimFlags }: ReportRendererProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeRaw]}
+      // Order matters: rehypeRaw turns embedded HTML strings into HAST nodes
+      // first, then rehypeSanitize prunes anything outside the allow-list.
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, claimSpanSchema]]}
       components={{
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         span: ({ node, ...props }: any) => {

@@ -245,7 +245,12 @@ export default function JobProgressPage() {
       )}
 
       {/* Phase rail */}
-      <PhaseRail currentPhase={currentPhase} completionMessage={completionMessage} />
+      <PhaseRail
+        currentPhase={currentPhase}
+        scoutComplete={scoutComplete}
+        scribeComplete={scribeComplete}
+        completionMessage={completionMessage}
+      />
 
       {/* Body — scrollable phase cards */}
       <div

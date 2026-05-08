@@ -20,6 +20,7 @@ import RegisterPage from './pages/RegisterPage'
 import ReportPage from './pages/ReportPage'
 import ResearchInputPage from './pages/ResearchInputPage'
 import ResearchPreviewPage from './pages/ResearchPreviewPage'
+import { previewStateSchema } from './pages/researchPreviewState'
 
 const authSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -106,6 +107,12 @@ const researchPreviewRoute = createRoute({
   path: '/research/preview',
   beforeLoad: async ({ context, location }) => {
     await requireAuth(context.queryClient, location.href)
+    // The preview screen is only meaningful when reached via router state
+    // pushed from `/research/new`; a direct URL hit (or stale tab) carries
+    // no plan to review, so bounce back to the input form before mount.
+    if (!previewStateSchema.safeParse(location.state ?? {}).success) {
+      throw redirect({ to: '/research/new' })
+    }
   },
   component: ResearchPreviewPage,
 })

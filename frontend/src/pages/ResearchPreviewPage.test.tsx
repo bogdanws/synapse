@@ -186,6 +186,21 @@ describe('ResearchPreviewPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: '/research/new' })
   })
 
+  it('disables launch and shows an inline error when every sub-question is dropped', async () => {
+    renderPage()
+
+    // Drop all three sub-questions one by one.
+    for (const btn of screen.getAllByRole('button', { name: /^drop$/i })) {
+      await userEvent.click(btn)
+    }
+
+    const launch = screen.getByRole('button', { name: /approve & launch/i })
+    expect(launch).toBeDisabled()
+    // Without the guard the backend would coerce `sub_questions: []` to None
+    // and silently re-run Scout's decompose, ignoring the user's intent.
+    expect(mockStartResearch).not.toHaveBeenCalled()
+  })
+
   it('"Back to brief" navigates to /research/new', async () => {
     renderPage()
 
