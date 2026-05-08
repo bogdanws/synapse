@@ -35,21 +35,25 @@ function jobsWsUrl(jobId: string): string {
 
 // The wire shape comes from the OpenAPI codegen (JobSnapshot | ProgressEvent), so we trust the static types but still guard the boundary against malformed payloads (network corruption, accidentally redirected route, etc.) by checking the discriminator before accepting a message.
 export function useJobStream(jobId: string, options: UseJobStreamOptions = {}): UseJobStreamResult {
-  // Keying the entries by jobId resets the visible message list when the route param changes without writing to state inside the effect.
+  // Both state slices are keyed by jobId so derived values reset correctly when the job changes without a synchronous setState inside the effect
   const [entries, setEntries] = useState<{ jobId: string; messages: JobMessage[] }>({
     jobId,
     messages: [],
   })
-  const [status, setStatus] = useState<ConnectionStatus>('connecting')
+  const [statusState, setStatusState] = useState<{ jobId: string; status: ConnectionStatus }>({
+    jobId,
+    status: 'connecting',
+  })
   const messages = entries.jobId === jobId ? entries.messages : []
+  const status = statusState.jobId === jobId ? statusState.status : 'connecting'
 
   useEffect(() => {
     const create = options.factory ?? ((url: string) => new WebSocket(url))
     const ws = create(jobsWsUrl(jobId))
 
-    const onOpen = () => setStatus('open')
-    const onError = () => setStatus('error')
-    const onClose = () => setStatus('closed')
+    const onOpen = () => setStatusState({ jobId, status: 'open' })
+    const onError = () => setStatusState({ jobId, status: 'error' })
+    const onClose = () => setStatusState({ jobId, status: 'closed' })
     const onMessage = (event: MessageEvent<string>) => {
       const parsed = parseMessage(event.data)
       if (!parsed) return

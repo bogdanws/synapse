@@ -120,9 +120,8 @@ def _force_const_type_required(schema: dict[str, Any]) -> None:
 def register_ws_schemas(app: FastAPI) -> None:
     """Surface WS message schemas in the OpenAPI components store.
 
-    OpenAPI 3.x doesn't describe WebSocket routes;
-    Instead we publish the message types under `components.schemas` so the frontend's codegen produces typed WS payloads with no drift risk.
-    The runtime WS handler still validates incoming JSON via the same Pydantic models, so the boundary stays guarded
+    OpenAPI 3.x doesn't describe WebSocket routes. We publish the message types under `components.schemas` so the frontend's codegen produces typed WS payloads with no drift risk.
+    The server only sends on this socket; inbound validation (Redis -> Pydantic) happens inside `events_service.subscribe`.
     """
 
     def custom_openapi() -> dict[str, Any]:

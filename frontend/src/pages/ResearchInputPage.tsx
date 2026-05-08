@@ -17,6 +17,7 @@ export default function ResearchInputPage() {
       await navigate({ to: '/research/$jobId', params: { jobId: job.id } })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unexpected error')
+    } finally {
       setLoading(false)
     }
   }
