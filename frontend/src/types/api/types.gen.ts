@@ -281,7 +281,7 @@ export type ClaimVerified = {
     /**
      * Type
      */
-    type?: 'claim_verified';
+    type: 'claim_verified';
     flag: ClaimFlag;
 };
 
@@ -300,7 +300,7 @@ export type JobCompleted = {
     /**
      * Type
      */
-    type?: 'job_completed';
+    type: 'job_completed';
     /**
      * Overall Confidence
      */
@@ -322,7 +322,7 @@ export type JobFailed = {
     /**
      * Type
      */
-    type?: 'job_failed';
+    type: 'job_failed';
     /**
      * Error
      */
@@ -366,7 +366,7 @@ export type ScoutComplete = {
     /**
      * Type
      */
-    type?: 'scout_complete';
+    type: 'scout_complete';
     /**
      * Source Count
      */
@@ -388,7 +388,7 @@ export type ScribeComplete = {
     /**
      * Type
      */
-    type?: 'scribe_complete';
+    type: 'scribe_complete';
 };
 
 /**
@@ -406,7 +406,7 @@ export type SectionDrafted = {
     /**
      * Type
      */
-    type?: 'section_drafted';
+    type: 'section_drafted';
     section: ReportSection;
 };
 
@@ -465,7 +465,7 @@ export type SourceFound = {
     /**
      * Type
      */
-    type?: 'source_found';
+    type: 'source_found';
     source: Source;
 };
 
@@ -484,7 +484,7 @@ export type SourceScored = {
     /**
      * Type
      */
-    type?: 'source_scored';
+    type: 'source_scored';
     /**
      * Source Id
      */
@@ -514,7 +514,7 @@ export type SubQuestionsGenerated = {
     /**
      * Type
      */
-    type?: 'sub_questions_generated';
+    type: 'sub_questions_generated';
     /**
      * Sub Questions
      */
@@ -551,13 +551,14 @@ export type ProgressEvent = ({
  *
  * First message sent on a WebSocket connection.
  *
- * Lets a client that connected mid-pipeline render the current state instead of waiting for the next event. `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
+ * Lets a client that connected mid-pipeline render the current state instead of waiting for the next event.
+ * `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
  */
 export type JobSnapshot = {
     /**
      * Type
      */
-    type?: 'snapshot';
+    type: 'snapshot';
     /**
      * Job Id
      */

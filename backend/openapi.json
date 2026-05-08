@@ -1023,7 +1023,8 @@
         },
         "required": [
           "job_id",
-          "flag"
+          "flag",
+          "type"
         ],
         "title": "ClaimVerified",
         "type": "object"
@@ -1053,7 +1054,8 @@
         },
         "required": [
           "job_id",
-          "overall_confidence"
+          "overall_confidence",
+          "type"
         ],
         "title": "JobCompleted",
         "type": "object"
@@ -1083,7 +1085,8 @@
         },
         "required": [
           "job_id",
-          "error"
+          "error",
+          "type"
         ],
         "title": "JobFailed",
         "type": "object"
@@ -1144,7 +1147,8 @@
         },
         "required": [
           "job_id",
-          "source_count"
+          "source_count",
+          "type"
         ],
         "title": "ScoutComplete",
         "type": "object"
@@ -1169,7 +1173,8 @@
           }
         },
         "required": [
-          "job_id"
+          "job_id",
+          "type"
         ],
         "title": "ScribeComplete",
         "type": "object"
@@ -1198,7 +1203,8 @@
         },
         "required": [
           "job_id",
-          "section"
+          "section",
+          "type"
         ],
         "title": "SectionDrafted",
         "type": "object"
@@ -1298,7 +1304,8 @@
         },
         "required": [
           "job_id",
-          "source"
+          "source",
+          "type"
         ],
         "title": "SourceFound",
         "type": "object"
@@ -1338,7 +1345,8 @@
           "job_id",
           "source_id",
           "credibility",
-          "relevance"
+          "relevance",
+          "type"
         ],
         "title": "SourceScored",
         "type": "object"
@@ -1371,7 +1379,8 @@
         },
         "required": [
           "job_id",
-          "sub_questions"
+          "sub_questions",
+          "type"
         ],
         "title": "SubQuestionsGenerated",
         "type": "object"
@@ -1432,7 +1441,7 @@
         ]
       },
       "JobSnapshot": {
-        "description": "First message sent on a WebSocket connection.\n\nLets a client that connected mid-pipeline render the current state instead of waiting for the next event. `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.",
+        "description": "First message sent on a WebSocket connection.\n\nLets a client that connected mid-pipeline render the current state instead of waiting for the next event.\n`job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.",
         "properties": {
           "type": {
             "const": "snapshot",
@@ -1458,7 +1467,8 @@
           }
         },
         "required": [
-          "job_id"
+          "job_id",
+          "type"
         ],
         "title": "JobSnapshot",
         "type": "object"

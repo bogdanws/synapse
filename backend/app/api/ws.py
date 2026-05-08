@@ -77,7 +77,10 @@ async def jobs_ws(websocket: WebSocket, job_id: UUID) -> None:
 
 
 def _ws_payload_schemas() -> dict[str, dict[str, Any]]:
-    """Render the WS message types as JSON Schema with components-style refs."""
+    """Render the WS message types as JSON Schema with components-style refs.
+
+    Pydantic always emits the discriminator (`type`) on the wire — it has a default value, so in standard JSON Schema generation it appears as a non-required property. That weakens the generated TS union (every variant's `type` becomes optional), which in turn defeats exhaustiveness checks on the consumer side. We post-process each variant schema to mark `type` required wherever it has a `const`.
+    """
     out: dict[str, dict[str, Any]] = {}
     for name, root in (
         (
@@ -93,10 +96,25 @@ def _ws_payload_schemas() -> dict[str, dict[str, Any]]:
             ),
         ),
     ):
+        _force_const_type_required(root)
         for nested_name, nested_schema in root.pop("$defs", {}).items():
+            _force_const_type_required(nested_schema)
             out.setdefault(nested_name, nested_schema)
         out[name] = root
     return out
+
+
+def _force_const_type_required(schema: dict[str, Any]) -> None:
+    """Mark a schema's `type` discriminator required when it's a const value."""
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return
+    type_prop = properties.get("type")
+    if not isinstance(type_prop, dict) or "const" not in type_prop:
+        return
+    required = schema.setdefault("required", [])
+    if "type" not in required:
+        required.append("type")
 
 
 def register_ws_schemas(app: FastAPI) -> None:
