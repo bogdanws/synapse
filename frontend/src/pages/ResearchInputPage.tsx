@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import TopicForm from '../components/TopicForm'
 import { api, ApiError } from '../services/api'
-import type { ResearchJobResponse } from '../types/api'
+import type { ResearchJob } from '../types/api'
 
 export default function ResearchInputPage() {
-  const [job, setJob] = useState<ResearchJobResponse | null>(null)
+  const [job, setJob] = useState<ResearchJob | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

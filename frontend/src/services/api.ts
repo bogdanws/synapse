@@ -1,4 +1,4 @@
-import type { ResearchJobResponse, ResearchRequest } from '../types/api'
+import type { ResearchJob, ResearchRequest } from '../types/api'
 
 export class ApiError extends Error {
   readonly status: number
@@ -34,8 +34,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  startResearch(payload: ResearchRequest): Promise<ResearchJobResponse> {
-    return request<ResearchJobResponse>('/api/research', {
+  startResearch(payload: ResearchRequest): Promise<ResearchJob> {
+    return request<ResearchJob>('/api/research', {
       method: 'POST',
       body: JSON.stringify(payload),
     })
