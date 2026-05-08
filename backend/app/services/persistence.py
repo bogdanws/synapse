@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import orm
@@ -181,7 +181,9 @@ async def load_sources(session: AsyncSession, job_id: UUID) -> list[Source]:
     rows = (
         (
             await session.execute(
-                select(orm.Source).where(orm.Source.job_id == job_id).order_by(orm.Source.short_id)
+                select(orm.Source)
+                .where(orm.Source.job_id == job_id)
+                .order_by(cast(func.substr(orm.Source.short_id, 2), Integer))
             )
         )
         .scalars()
