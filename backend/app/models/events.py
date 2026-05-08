@@ -12,7 +12,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.research import ClaimFlag, ReportSection, Source
+from app.models.research import ClaimFlag, ReportSection, ResearchJob, Source
 
 
 class EventBase(BaseModel):
@@ -78,3 +78,15 @@ ProgressEvent = Annotated[
     | JobFailed,
     Field(discriminator="type"),
 ]
+
+
+class JobSnapshot(BaseModel):
+    """First message sent on a WebSocket connection.
+
+    Lets a client that connected mid-pipeline render the current state instead of waiting for the next event.
+    `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
+    """
+
+    type: Literal["snapshot"] = "snapshot"
+    job_id: UUID
+    job: ResearchJob | None = None

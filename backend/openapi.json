@@ -963,6 +963,505 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ClaimFlag": {
+        "properties": {
+          "claim_id": {
+            "title": "Claim Id",
+            "type": "string"
+          },
+          "section_id": {
+            "title": "Section Id",
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/Verdict"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "supporting_source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supporting Source Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "claim_id",
+          "section_id",
+          "verdict",
+          "rationale",
+          "supporting_source_ids"
+        ],
+        "title": "ClaimFlag",
+        "type": "object"
+      },
+      "ClaimVerified": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "claim_verified",
+            "default": "claim_verified",
+            "title": "Type",
+            "type": "string"
+          },
+          "flag": {
+            "$ref": "#/components/schemas/ClaimFlag"
+          }
+        },
+        "required": [
+          "job_id",
+          "flag"
+        ],
+        "title": "ClaimVerified",
+        "type": "object"
+      },
+      "JobCompleted": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "job_completed",
+            "default": "job_completed",
+            "title": "Type",
+            "type": "string"
+          },
+          "overall_confidence": {
+            "title": "Overall Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "job_id",
+          "overall_confidence"
+        ],
+        "title": "JobCompleted",
+        "type": "object"
+      },
+      "JobFailed": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "job_failed",
+            "default": "job_failed",
+            "title": "Type",
+            "type": "string"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "error"
+        ],
+        "title": "JobFailed",
+        "type": "object"
+      },
+      "ReportSection": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "body_md": {
+            "title": "Body Md",
+            "type": "string"
+          },
+          "cited_source_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cited Source Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "body_md",
+          "cited_source_ids"
+        ],
+        "title": "ReportSection",
+        "type": "object"
+      },
+      "ScoutComplete": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "scout_complete",
+            "default": "scout_complete",
+            "title": "Type",
+            "type": "string"
+          },
+          "source_count": {
+            "title": "Source Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "source_count"
+        ],
+        "title": "ScoutComplete",
+        "type": "object"
+      },
+      "ScribeComplete": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "scribe_complete",
+            "default": "scribe_complete",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "ScribeComplete",
+        "type": "object"
+      },
+      "SectionDrafted": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "section_drafted",
+            "default": "section_drafted",
+            "title": "Type",
+            "type": "string"
+          },
+          "section": {
+            "$ref": "#/components/schemas/ReportSection"
+          }
+        },
+        "required": [
+          "job_id",
+          "section"
+        ],
+        "title": "SectionDrafted",
+        "type": "object"
+      },
+      "Source": {
+        "description": "A single source gathered by Scout, referenced by Scribe and Critic.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Author"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Published At"
+          },
+          "credibility": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Credibility",
+            "type": "number"
+          },
+          "relevance": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Relevance",
+            "type": "number"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "credibility",
+          "relevance",
+          "snippet"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "SourceFound": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "source_found",
+            "default": "source_found",
+            "title": "Type",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/Source"
+          }
+        },
+        "required": [
+          "job_id",
+          "source"
+        ],
+        "title": "SourceFound",
+        "type": "object"
+      },
+      "SourceScored": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "source_scored",
+            "default": "source_scored",
+            "title": "Type",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "credibility": {
+            "title": "Credibility",
+            "type": "number"
+          },
+          "relevance": {
+            "title": "Relevance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "job_id",
+          "source_id",
+          "credibility",
+          "relevance"
+        ],
+        "title": "SourceScored",
+        "type": "object"
+      },
+      "SubQuestionsGenerated": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "type": {
+            "const": "sub_questions_generated",
+            "default": "sub_questions_generated",
+            "title": "Type",
+            "type": "string"
+          },
+          "sub_questions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sub Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_id",
+          "sub_questions"
+        ],
+        "title": "SubQuestionsGenerated",
+        "type": "object"
+      },
+      "Verdict": {
+        "enum": [
+          "supported",
+          "partially_supported",
+          "unsupported",
+          "contradicted"
+        ],
+        "title": "Verdict",
+        "type": "string"
+      },
+      "ProgressEvent": {
+        "discriminator": {
+          "mapping": {
+            "claim_verified": "#/components/schemas/ClaimVerified",
+            "job_completed": "#/components/schemas/JobCompleted",
+            "job_failed": "#/components/schemas/JobFailed",
+            "scout_complete": "#/components/schemas/ScoutComplete",
+            "scribe_complete": "#/components/schemas/ScribeComplete",
+            "section_drafted": "#/components/schemas/SectionDrafted",
+            "source_found": "#/components/schemas/SourceFound",
+            "source_scored": "#/components/schemas/SourceScored",
+            "sub_questions_generated": "#/components/schemas/SubQuestionsGenerated"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SubQuestionsGenerated"
+          },
+          {
+            "$ref": "#/components/schemas/SourceFound"
+          },
+          {
+            "$ref": "#/components/schemas/SourceScored"
+          },
+          {
+            "$ref": "#/components/schemas/ScoutComplete"
+          },
+          {
+            "$ref": "#/components/schemas/SectionDrafted"
+          },
+          {
+            "$ref": "#/components/schemas/ScribeComplete"
+          },
+          {
+            "$ref": "#/components/schemas/ClaimVerified"
+          },
+          {
+            "$ref": "#/components/schemas/JobCompleted"
+          },
+          {
+            "$ref": "#/components/schemas/JobFailed"
+          }
+        ]
+      },
+      "JobSnapshot": {
+        "description": "First message sent on a WebSocket connection.\n\nLets a client that connected mid-pipeline render the current state instead of waiting for the next event. `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.",
+        "properties": {
+          "type": {
+            "const": "snapshot",
+            "default": "snapshot",
+            "title": "Type",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchJob"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "JobSnapshot",
+        "type": "object"
       }
     },
     "securitySchemes": {

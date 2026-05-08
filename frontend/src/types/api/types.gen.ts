@@ -243,6 +243,328 @@ export type ValidationError = {
     };
 };
 
+/**
+ * ClaimFlag
+ */
+export type ClaimFlag = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Section Id
+     */
+    section_id: string;
+    verdict: Verdict;
+    /**
+     * Rationale
+     */
+    rationale: string;
+    /**
+     * Supporting Source Ids
+     */
+    supporting_source_ids: Array<string>;
+};
+
+/**
+ * ClaimVerified
+ */
+export type ClaimVerified = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'claim_verified';
+    flag: ClaimFlag;
+};
+
+/**
+ * JobCompleted
+ */
+export type JobCompleted = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'job_completed';
+    /**
+     * Overall Confidence
+     */
+    overall_confidence: number;
+};
+
+/**
+ * JobFailed
+ */
+export type JobFailed = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'job_failed';
+    /**
+     * Error
+     */
+    error: string;
+};
+
+/**
+ * ReportSection
+ */
+export type ReportSection = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Heading
+     */
+    heading: string;
+    /**
+     * Body Md
+     */
+    body_md: string;
+    /**
+     * Cited Source Ids
+     */
+    cited_source_ids: Array<string>;
+};
+
+/**
+ * ScoutComplete
+ */
+export type ScoutComplete = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'scout_complete';
+    /**
+     * Source Count
+     */
+    source_count: number;
+};
+
+/**
+ * ScribeComplete
+ */
+export type ScribeComplete = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'scribe_complete';
+};
+
+/**
+ * SectionDrafted
+ */
+export type SectionDrafted = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'section_drafted';
+    section: ReportSection;
+};
+
+/**
+ * Source
+ *
+ * A single source gathered by Scout, referenced by Scribe and Critic.
+ */
+export type Source = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Author
+     */
+    author?: string | null;
+    /**
+     * Published At
+     */
+    published_at?: string | null;
+    /**
+     * Credibility
+     */
+    credibility: number;
+    /**
+     * Relevance
+     */
+    relevance: number;
+    /**
+     * Snippet
+     */
+    snippet: string;
+};
+
+/**
+ * SourceFound
+ */
+export type SourceFound = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'source_found';
+    source: Source;
+};
+
+/**
+ * SourceScored
+ */
+export type SourceScored = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'source_scored';
+    /**
+     * Source Id
+     */
+    source_id: string;
+    /**
+     * Credibility
+     */
+    credibility: number;
+    /**
+     * Relevance
+     */
+    relevance: number;
+};
+
+/**
+ * SubQuestionsGenerated
+ */
+export type SubQuestionsGenerated = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Timestamp
+     */
+    timestamp?: string;
+    /**
+     * Type
+     */
+    type?: 'sub_questions_generated';
+    /**
+     * Sub Questions
+     */
+    sub_questions: Array<string>;
+};
+
+/**
+ * Verdict
+ */
+export type Verdict = 'supported' | 'partially_supported' | 'unsupported' | 'contradicted';
+
+export type ProgressEvent = ({
+    type: 'sub_questions_generated';
+} & SubQuestionsGenerated) | ({
+    type: 'source_found';
+} & SourceFound) | ({
+    type: 'source_scored';
+} & SourceScored) | ({
+    type: 'scout_complete';
+} & ScoutComplete) | ({
+    type: 'section_drafted';
+} & SectionDrafted) | ({
+    type: 'scribe_complete';
+} & ScribeComplete) | ({
+    type: 'claim_verified';
+} & ClaimVerified) | ({
+    type: 'job_completed';
+} & JobCompleted) | ({
+    type: 'job_failed';
+} & JobFailed);
+
+/**
+ * JobSnapshot
+ *
+ * First message sent on a WebSocket connection.
+ *
+ * Lets a client that connected mid-pipeline render the current state instead of waiting for the next event. `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
+ */
+export type JobSnapshot = {
+    /**
+     * Type
+     */
+    type?: 'snapshot';
+    /**
+     * Job Id
+     */
+    job_id: string;
+    job?: ResearchJob | null;
+};
+
 export type AuthCookieLoginApiAuthLoginPostData = {
     body: BodyAuthCookieLoginApiAuthLoginPost;
     path?: never;
