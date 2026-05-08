@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,7 +37,15 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(default=True, alias="COOKIE_SECURE")
 
     # Server
+    app_env: Literal["development", "test", "production"] = Field(
+        default="development",
+        alias="APP_ENV",
+    )
     log_level: str = Field(default="info", alias="LOG_LEVEL")
+    log_format: Literal["auto", "json", "console"] = Field(
+        default="auto",
+        alias="LOG_FORMAT",
+    )
     cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
 
     @field_validator("jwt_secret")
