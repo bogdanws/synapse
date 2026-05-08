@@ -1,6 +1,6 @@
 """Scribe — synthesis agent.
 
-Turns a topic plus Scout's curated sources into a structured `ScribeReport`. Makes one structured-output LLM call; if the resulting report violates the format contract, it retries once with the validation error appended to the prompt before giving up.
+Turns a topic plus Scout's curated sources into a structured `ScribeReport`. Makes one structured-output LLM call routed through `invoke_structured_with_retry`, which replays the model's previous (invalid) response back as an assistant turn on retry so the model can edit its mistake instead of starting over.
 
 We keep the LLM's output schema narrower than `ScribeReport`: the model returns only the parts it actually generates (title, summary, sections, contradictions, follow-ups). Fields that the system already knows — `id`, `job_id`, `topic`, `sources`, `generated_at`, `model` — are attached server-side. This prevents the model from dropping or inventing sources, which would in turn break Critic.
 """
@@ -8,6 +8,7 @@ We keep the LLM's output schema narrower than `ScribeReport`: the model returns 
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 import structlog
@@ -19,12 +20,16 @@ from app.models.research import (
     ScribeReport,
     Source,
 )
-from app.services.llm import build_chat_model
+from app.services.llm import (
+    StructuredRetryError,
+    build_chat_model,
+    invoke_structured_with_retry,
+)
 from app.services.validation import ScribeValidationError, validate_scribe_report
 
 _log = structlog.get_logger(__name__)
 
-# One initial attempt plus this many retries on validation failure. Keep small: each retry roughly doubles the cost and wall time, and a model that fails twice rarely recovers on a third try.
+# One initial attempt plus this many retries on validation failure. Kept at one for cost reasons; the conversation-aware retry below means a single retry is meaningfully different from the initial attempt (the model sees its previous bad output), so this is more useful than it would be otherwise.
 _MAX_VALIDATION_RETRIES = 1
 
 _SYSTEM_PROMPT = """\
@@ -41,7 +46,7 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
     {
       "id": "sec1",
       "heading": "<section heading>",
-      "body_md": "<GFM markdown body>",
+      "body_md": "<GFM markdown body — see Body rules below>",
       "cited_source_ids": ["s1", "s3", ...]
     },
     ...
@@ -52,24 +57,29 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
   "follow_ups": ["<follow-up question>", ...]
 }
 
-Section rules
--------------
-- Section ids are sequential: sec1, sec2, sec3, ... (no gaps).
-- Aim for 3-6 sections with descriptive headings.
+Field rules
+-----------
+- `id`: sequential `sec1`, `sec2`, `sec3`, ... with no gaps. Aim for 3-6 sections with descriptive headings.
+- `cited_source_ids`: every id listed here MUST appear at least once as `[^sX]` inside that section's `body_md`. Conversely, do not list ids that aren't actually cited in the prose.
 
-Claim wrapping (mandatory)
---------------------------
-Every factual claim that could be checked against a source must be wrapped in:
+Body rules (mandatory — most failures come from skipping these)
+---------------------------------------------------------------
+1. Every factual claim that could be checked against a source must be wrapped in a span tag:
 
-    <span data-claim="<section_id>.c<n>">…claim text…</span>
+       <span data-claim="<section_id>.c<n>">...claim text [^sX]...</span>
 
-Within each section, claim suffixes start at c1 and increment by one (c1, c2, c3, ...). The section_id prefix must match the section's own id. This is the only HTML allowed in body_md.
+2. The `section_id` prefix MUST match the section's own `id`.
+3. Claim suffixes start at `c1` and increment by one within each section (`c1`, `c2`, `c3`, ...) — no gaps, no duplicates.
+4. Every citation `[^sX]` MUST appear inside one of these spans. Use the exact short id from the input source list; never invent a new id.
+5. The span tag is the only HTML allowed in `body_md`. Tables, blockquotes, and lists use standard GFM.
 
-Citations
----------
-Cite sources with footnotes [^sX] where X is the source's short id (s1, s2, ...). Place the citation inside the relevant <span data-claim>. Every id listed in a section's cited_source_ids must appear at least once as a [^sX] footnote in that section's body_md.
+Worked example of one section's `body_md`:
 
-Tables, blockquotes, and lists use standard GFM. Do not invent sources. Only cite ids that appear in the input list.
+    The market grew 12% YoY in Q4 <span data-claim="sec1.c1">according to the industry report[^s2]</span>. Adoption was uneven across regions, <span data-claim="sec1.c2">with EMEA leading[^s4][^s7]</span>.
+
+with `cited_source_ids: ["s2", "s4", "s7"]`.
+
+Do not invent sources. Only cite ids that appear in the input list.
 """
 
 
@@ -104,58 +114,41 @@ class ScribeAgent:
             msg = "cannot synthesize a report with no sources"
             raise ScribeValidationError(msg)
 
-        last_error: str | None = None
-        for attempt in range(_MAX_VALIDATION_RETRIES + 1):
-            llm_output = await self._call_llm(
-                topic=topic,
-                sub_questions=sub_questions,
-                sources=sources,
-                retry_feedback=last_error,
-            )
-            report = self._assemble(
-                job_id=job_id,
-                topic=topic,
-                sources=sources,
-                llm_output=llm_output,
-            )
-            try:
-                validate_scribe_report(report)
-            except ScribeValidationError as exc:
-                last_error = str(exc)
-                _log.warning(
-                    "scribe_validation_failed",
-                    attempt=attempt + 1,
-                    error=last_error,
-                )
-                continue
-            return report
-
-        msg = f"scribe output failed validation after {_MAX_VALIDATION_RETRIES + 1} attempts: {last_error}"
-        raise ScribeValidationError(msg)
-
-    async def _call_llm(
-        self,
-        *,
-        topic: str,
-        sub_questions: list[str],
-        sources: list[Source],
-        retry_feedback: str | None,
-    ) -> _ScribeLLMOutput:
         chat = build_chat_model(self.model).with_structured_output(
             _ScribeLLMOutput,
             method="json_mode",
+            include_raw=True,
         )
-        user_msg = _build_user_prompt(topic, sub_questions, sources, retry_feedback)
-        result = await chat.ainvoke(
-            [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ]
-        )
-        if not isinstance(result, _ScribeLLMOutput):
-            msg = f"unexpected scribe response type: {type(result)!r}"
-            raise TypeError(msg)
-        return result
+        messages: list[Any] = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _build_initial_prompt(topic, sub_questions, sources),
+            },
+        ]
+
+        # Closure validator: assembling inside the validator lets `validate_scribe_report` see the final shape (with sources attached) and gives the helper a single error string per failed attempt. Re-assembly on success is cheap (just a Pydantic constructor) and keeps the validator pure.
+        def _validate(parsed: _ScribeLLMOutput) -> None:
+            candidate = self._assemble(
+                job_id=job_id, topic=topic, sources=sources, llm_output=parsed
+            )
+            validate_scribe_report(candidate)
+
+        try:
+            parsed = await invoke_structured_with_retry(
+                chat,
+                messages,
+                validate=_validate,
+                retry_feedback=_retry_feedback_message,
+                max_retries=_MAX_VALIDATION_RETRIES,
+                log_event="scribe_validation_failed",
+                log=_log,
+            )
+        except StructuredRetryError as exc:
+            msg = f"scribe output failed validation after {exc.attempts} attempts: {exc.last_error}"
+            raise ScribeValidationError(msg) from exc
+
+        return self._assemble(job_id=job_id, topic=topic, sources=sources, llm_output=parsed)
 
     def _assemble(
         self,
@@ -180,26 +173,32 @@ class ScribeAgent:
         )
 
 
-def _build_user_prompt(
+def _build_initial_prompt(
     topic: str,
     sub_questions: list[str],
     sources: list[Source],
-    retry_feedback: str | None,
 ) -> str:
     sub_q_block = "\n".join(f"- {q}" for q in sub_questions) or "(none)"
     source_block = "\n\n".join(
         (f"[{src.id}] {src.title}\nURL: {src.url}\nSnippet: {src.snippet}") for src in sources
     )
-    parts = [
-        f"Topic: {topic}",
-        f"Sub-questions:\n{sub_q_block}",
-        f"Sources:\n{source_block}",
-    ]
-    if retry_feedback:
-        # Surfaced verbatim so the model gets actionable structural feedback rather than a generic "try again".
-        parts.append(
-            "Your previous response failed validation with this error:\n"
-            f"{retry_feedback}\n"
-            "Fix the issue and resubmit a fully valid report."
-        )
-    return "\n\n".join(parts)
+    return "\n\n".join(
+        [
+            f"Topic: {topic}",
+            f"Sub-questions:\n{sub_q_block}",
+            f"Sources:\n{source_block}",
+        ]
+    )
+
+
+def _retry_feedback_message(error: str) -> str:
+    """Targeted feedback paired with the model's previous assistant turn.
+
+    Phrased as an edit on the prior response (rather than "try again from scratch") because the prior response is now visible in the conversation history.
+    """
+    return (
+        "Your previous response failed validation with this error:\n"
+        f"{error}\n\n"
+        "Reply with a fully corrected report in the same JSON shape. "
+        "Preserve the parts that were correct; change only what the error references."
+    )

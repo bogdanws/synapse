@@ -157,9 +157,18 @@ async def test_verify_section_retries_on_missing_claim_flag(
     )
     assert route.call_count == 2
     assert [f.claim_id for f in output.claim_flags] == ["sec1.c1"]
-    # Retry prompt carries the validation error verbatim.
+
+    # The retry must replay the model's previous (bad) JSON as an assistant
+    # turn followed by a corrective user turn so the model can edit its
+    # mistake instead of regenerating from scratch.
     second_request = route.calls[1].request
     body = json.loads(second_request.content)
+    roles = [m["role"] for m in body["messages"]]
+    assert roles == ["system", "user", "assistant", "user"], roles
+    # Assistant turn replays the bad payload (empty claim_flags array).
+    assistant_content = body["messages"][-2]["content"]
+    assert '"claim_flags": []' in assistant_content
+    # Final user turn carries the targeted validation feedback.
     user_msg = body["messages"][-1]["content"]
     assert "missing claim_flags" in user_msg
 

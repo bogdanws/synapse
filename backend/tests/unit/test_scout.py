@@ -10,7 +10,7 @@ import httpx
 import pytest
 import respx
 
-from app.agents.scout import ScoutAgent, _canonical_url, _RawSource
+from app.agents.scout import ScoutAgent, ScoutValidationError, _canonical_url, _RawSource
 from app.agents.scout_graph import ScoutOutput, run_scout
 from app.models.events import (
     ProgressEvent,
@@ -115,10 +115,49 @@ async def test_decompose_rejects_too_few_sub_questions(
         )
     )
     agent = ScoutAgent(model="test/model", search_client=_DummySearchClient([]))
-    # Pydantic enforces min_length=3 inside _SubQuestions; the call should fail
-    # rather than silently return one sub-question.
-    with pytest.raises(Exception):  # noqa: B017,PT011
+    # Pydantic's min_length=3 inside _SubQuestions makes the parsed shape
+    # invalid; after the retry exhausts, decompose should surface a typed
+    # ScoutValidationError rather than letting a generic langchain parser
+    # exception bubble up.
+    with pytest.raises(ScoutValidationError, match="failed to produce"):
         await agent.decompose("Topic")
+
+
+@pytest.mark.respx(base_url=OPENROUTER_BASE_URL)
+async def test_decompose_retries_on_empty_response(
+    respx_mock: respx.MockRouter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty assistant body crashed the whole pipeline before this fix.
+
+    With `include_raw=True` the parser returns `parsed=None` instead of raising,
+    and the retry loop replays the (empty) prior turn back to the model along
+    with a corrective user message.
+    """
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    good = _openrouter_completion(
+        '{"sub_questions": ["What is X?", "Why does X matter?", "How does X work?"]}'
+    )
+    route = respx_mock.post("/chat/completions").mock(
+        side_effect=[
+            httpx.Response(200, json=_openrouter_completion("")),  # empty body
+            httpx.Response(200, json=good),
+        ]
+    )
+    agent = ScoutAgent(model="test/model", search_client=_DummySearchClient([]))
+    result = await agent.decompose("Topic")
+    assert route.call_count == 2
+    assert result == ["What is X?", "Why does X matter?", "How does X work?"]
+
+    import json as _json
+
+    second_request = route.calls[1].request
+    body = _json.loads(second_request.content)
+    roles = [m["role"] for m in body["messages"]]
+    # system, original user, assistant(empty), corrective user.
+    assert roles == ["system", "user", "assistant", "user"], roles
+    assert body["messages"][-2]["content"] == ""
+    assert "failed validation" in body["messages"][-1]["content"]
 
 
 # ---- search ----------------------------------------------------------------

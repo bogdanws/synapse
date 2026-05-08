@@ -1,6 +1,6 @@
 """Critic — fact-checking agent.
 
-Verifies a `ScribeReport` claim-by-claim against the original sources. One LLM call per section, parallelisable; per-section output is light-validated and retried once on failure, then the per-section results are aggregated and the whole `CriticAnnotations` is run through the global validator before being returned.
+Verifies a `ScribeReport` claim-by-claim against the original sources. One LLM call per section, parallelisable; per-section output is light-validated and retried on failure with the model's previous response replayed back as an assistant turn so the model can edit its mistake instead of starting over. Per-section results are then aggregated and the whole `CriticAnnotations` is run through the global validator before being returned.
 
 The agent stays free of pubsub plumbing — `app.agents.critic_graph` wraps it for the LangGraph node and emits `ClaimVerified` events as each section completes.
 """
@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 import structlog
@@ -22,7 +23,11 @@ from app.models.research import (
     SectionConfidence,
     Source,
 )
-from app.services.llm import build_chat_model
+from app.services.llm import (
+    StructuredRetryError,
+    build_chat_model,
+    invoke_structured_with_retry,
+)
 from app.services.validation import (
     CriticValidationError,
     validate_critic_annotations,
@@ -30,6 +35,7 @@ from app.services.validation import (
 
 _log = structlog.get_logger(__name__)
 
+# One initial attempt plus this many retries on validation failure. Kept at one for cost reasons (Critic runs in parallel across every section, so retries multiply); the conversation-aware retry below makes the single retry meaningfully different from the initial attempt because the model sees its previous bad output.
 _MAX_VALIDATION_RETRIES = 1
 
 # Same regex as the Scribe validator. Duplicated here rather than imported because the validation module's pattern is intentionally module-private — exposing a public alias would invite drift in either direction.
@@ -80,33 +86,40 @@ class CriticAgent:
         section: ReportSection,
         sources: list[Source],
     ) -> _CriticSectionOutput:
-        """Run one LLM call to verify all claims in `section`. Retries once on validation failure."""
+        """Run one LLM call to verify all claims in `section`.
+
+        Routed through `invoke_structured_with_retry`, which replays the model's previous (invalid) JSON as an assistant turn on retry so the model can edit its mistake instead of regenerating from scratch.
+        """
         source_ids = {s.id for s in sources}
-        last_error: str | None = None
-        for attempt in range(_MAX_VALIDATION_RETRIES + 1):
-            output = await self._call_llm(
-                topic=topic,
-                section=section,
-                sources=sources,
-                retry_feedback=last_error,
-            )
-            try:
-                _validate_section_output(output, section, source_ids)
-            except CriticValidationError as exc:
-                last_error = str(exc)
-                _log.warning(
-                    "critic_section_validation_failed",
-                    section_id=section.id,
-                    attempt=attempt + 1,
-                    error=last_error,
-                )
-                continue
-            return output
-        msg = (
-            f"critic output for section {section.id} failed validation "
-            f"after {_MAX_VALIDATION_RETRIES + 1} attempts: {last_error}"
+        chat = build_chat_model(self.model).with_structured_output(
+            _CriticSectionOutput,
+            method="json_mode",
+            include_raw=True,
         )
-        raise CriticValidationError(msg)
+        messages: list[Any] = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _build_initial_prompt(topic, section, sources)},
+        ]
+
+        def _validate(parsed: _CriticSectionOutput) -> None:
+            _validate_section_output(parsed, section, source_ids)
+
+        try:
+            return await invoke_structured_with_retry(
+                chat,
+                messages,
+                validate=_validate,
+                retry_feedback=_retry_feedback_message,
+                max_retries=_MAX_VALIDATION_RETRIES,
+                log_event="critic_section_validation_failed",
+                log=_log.bind(section_id=section.id),
+            )
+        except StructuredRetryError as exc:
+            msg = (
+                f"critic output for section {section.id} failed validation "
+                f"after {exc.attempts} attempts: {exc.last_error}"
+            )
+            raise CriticValidationError(msg) from exc
 
     def aggregate(
         self,
@@ -140,30 +153,6 @@ class CriticAgent:
         )
         validate_critic_annotations(annotations, report)
         return annotations
-
-    async def _call_llm(
-        self,
-        *,
-        topic: str,
-        section: ReportSection,
-        sources: list[Source],
-        retry_feedback: str | None,
-    ) -> _CriticSectionOutput:
-        chat = build_chat_model(self.model).with_structured_output(
-            _CriticSectionOutput,
-            method="json_mode",
-        )
-        user_msg = _build_user_prompt(topic, section, sources, retry_feedback)
-        result = await chat.ainvoke(
-            [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ]
-        )
-        if not isinstance(result, _CriticSectionOutput):
-            msg = f"unexpected critic response type: {type(result)!r}"
-            raise TypeError(msg)
-        return result
 
 
 # ---- helpers --------------------------------------------------------------
@@ -216,29 +205,36 @@ def _validate_section_output(
             raise CriticValidationError(msg)
 
 
-def _build_user_prompt(
+def _build_initial_prompt(
     topic: str,
     section: ReportSection,
     sources: list[Source],
-    retry_feedback: str | None,
 ) -> str:
     source_block = "\n\n".join(
         f"[{src.id}] {src.title}\nURL: {src.url}\nSnippet: {src.snippet}" for src in sources
     )
-    parts = [
-        f"Topic: {topic}",
-        f"Section id: {section.id}",
-        f"Section heading: {section.heading}",
-        f"Section body:\n{section.body_md}",
-        f"Sources:\n{source_block}",
-    ]
-    if retry_feedback:
-        parts.append(
-            "Your previous response failed validation with this error:\n"
-            f"{retry_feedback}\n"
-            "Fix the issue and resubmit a fully valid response."
-        )
-    return "\n\n".join(parts)
+    return "\n\n".join(
+        [
+            f"Topic: {topic}",
+            f"Section id: {section.id}",
+            f"Section heading: {section.heading}",
+            f"Section body:\n{section.body_md}",
+            f"Sources:\n{source_block}",
+        ]
+    )
+
+
+def _retry_feedback_message(error: str) -> str:
+    """Targeted feedback paired with the model's previous assistant turn.
+
+    Phrased as an edit on the prior response (rather than "try again from scratch") because the prior response is now visible in the conversation history.
+    """
+    return (
+        "Your previous response failed validation with this error:\n"
+        f"{error}\n\n"
+        "Reply with a fully corrected response in the same JSON shape. "
+        "Preserve the parts that were correct; change only what the error references."
+    )
 
 
 def _overall_confidence(confidences: list[SectionConfidence]) -> float:

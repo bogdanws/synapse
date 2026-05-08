@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import structlog
@@ -16,7 +17,11 @@ from pydantic import BaseModel, Field
 
 from app.models.research import Source
 from app.services.credibility import domain_prior
-from app.services.llm import build_chat_model
+from app.services.llm import (
+    StructuredRetryError,
+    build_chat_model,
+    invoke_structured_with_retry,
+)
 from app.services.search import (
     ExaResult,
     ExaSearchClient,
@@ -30,6 +35,17 @@ _log = structlog.get_logger(__name__)
 _MIN_SUB_QUESTIONS = 3
 _MAX_SUB_QUESTIONS = 7
 _RESULTS_PER_QUESTION = 5
+
+# One initial attempt plus this many retries when the decompose call returns malformed JSON or a sub-question list that violates the schema bounds. Mirrors the Scribe/Critic pattern; the retry replays the model's previous (bad) response back as an assistant turn so the model can see exactly what it produced.
+_MAX_DECOMPOSE_RETRIES = 1
+
+
+class ScoutValidationError(RuntimeError):
+    """Raised when Scout cannot produce a usable sub-question list after all retries.
+
+    Distinct from network errors: this means the model was reachable but its response was structurally unusable (empty body, non-JSON, wrong shape, or a list outside `[_MIN_SUB_QUESTIONS, _MAX_SUB_QUESTIONS]`).
+    """
+
 
 _DECOMPOSE_SYSTEM_PROMPT = (
     "You are a senior research analyst. Decompose a research topic into focused, "
@@ -103,22 +119,40 @@ class ScoutAgent:
         self._results_per_question = results_per_question
 
     async def decompose(self, topic: str) -> list[str]:
-        """Break a topic into 3-7 focused sub-questions."""
+        """Break a topic into 3-7 focused sub-questions.
+
+        Routed through `invoke_structured_with_retry`, which is robust to the two failure modes we've seen in production: an empty response body (model returns `""`, which the JSON parser cannot decode) and a list that violates the schema bounds. Without that wrapper the langchain JSON parser raises `OutputParserException` mid-pipeline and the whole job dies.
+
+        Raises `ScoutValidationError` if no attempt produces a usable list.
+        """
         chat = build_chat_model(self.model).with_structured_output(
             _SubQuestions,
             method="json_mode",
+            include_raw=True,
         )
-        result = await chat.ainvoke(
-            [
-                {"role": "system", "content": _DECOMPOSE_SYSTEM_PROMPT},
-                {"role": "user", "content": f"Topic: {topic}"},
-            ]
-        )
-        if not isinstance(result, _SubQuestions):
-            # `with_structured_output` returns the schema instance unless `include_raw=True`; the isinstance guard satisfies mypy and flags surprises early.
-            msg = f"unexpected decompose response type: {type(result)!r}"
-            raise TypeError(msg)
-        return [q.strip() for q in result.sub_questions if q.strip()]
+        messages: list[Any] = [
+            {"role": "system", "content": _DECOMPOSE_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Topic: {topic}"},
+        ]
+
+        try:
+            parsed = await invoke_structured_with_retry(
+                chat,
+                messages,
+                validate=_validate_sub_questions,
+                retry_feedback=_decompose_retry_feedback,
+                max_retries=_MAX_DECOMPOSE_RETRIES,
+                log_event="scout_decompose_failed",
+                log=_log,
+            )
+        except StructuredRetryError as exc:
+            msg = (
+                f"scout failed to produce a valid sub-question list "
+                f"after {exc.attempts} attempts: {exc.last_error}"
+            )
+            raise ScoutValidationError(msg) from exc
+
+        return [q.strip() for q in parsed.sub_questions if q.strip()]
 
     async def search(self, query: str) -> list[_RawSource]:
         """Run a single Exa search; fall back to trafilatura on results without text."""
@@ -209,6 +243,31 @@ class ScoutAgent:
             _log.warning("scout_score_unexpected_type", type=str(type(result)))
             return {}
         return {r.index: r for r in result.ratings if 0 <= r.index < len(sources)}
+
+
+def _validate_sub_questions(parsed: _SubQuestions) -> None:
+    """Validator passed to `invoke_structured_with_retry` for `decompose`.
+
+    Pydantic's `min_length` / `max_length` already enforces the bounds, but stripping blank entries can drop the count below the minimum, which the helper would otherwise miss. Re-checking after the strip keeps the contract honest.
+    """
+    cleaned = [q.strip() for q in parsed.sub_questions if q.strip()]
+    if not _MIN_SUB_QUESTIONS <= len(cleaned) <= _MAX_SUB_QUESTIONS:
+        msg = (
+            f"after stripping blanks, got {len(cleaned)} sub-questions; "
+            f"need between {_MIN_SUB_QUESTIONS} and {_MAX_SUB_QUESTIONS}"
+        )
+        raise ValueError(msg)
+
+
+def _decompose_retry_feedback(error: str) -> str:
+    """Decompose retries re-state the schema verbatim because the failure mode we hit most often is the model emitting an empty body or commentary, not a near-miss the model can correct from a generic 'try again'."""
+    return (
+        f"Your previous response failed validation: {error}\n\n"
+        "Reply with strictly valid JSON of the form "
+        '{"sub_questions": [string, ...]} with between '
+        f"{_MIN_SUB_QUESTIONS} and {_MAX_SUB_QUESTIONS} non-empty entries. "
+        "No commentary, no markdown fence."
+    )
 
 
 def _to_raw_source(r: ExaResult, content: str | None) -> _RawSource:

@@ -149,10 +149,18 @@ async def test_synthesize_retries_with_feedback_on_validation_failure(
     assert route.call_count == 2
     assert report.sections[0].id == "sec1"
 
-    # The retry call should include the validation error in its prompt so the
-    # model has actionable feedback to fix the malformed output.
+    # The retry call must show the model its previous (bad) JSON in an
+    # assistant turn followed by a corrective user turn, so the model can
+    # edit its mistake instead of regenerating from scratch. Without this,
+    # the model has no way to know what "your previous response" refers to.
     second_request = route.calls[1].request
     body = json.loads(second_request.content)
+    roles = [m["role"] for m in body["messages"]]
+    assert roles == ["system", "user", "assistant", "user"], roles
+    # Assistant turn replays the bad JSON so the model sees its own mistake.
+    assistant_content = body["messages"][-2]["content"]
+    assert "sec1.c3" in assistant_content
+    # Final user turn carries the targeted validation feedback.
     user_msg = body["messages"][-1]["content"]
     assert "failed validation" in user_msg
     assert "expected next claim 'c2'" in user_msg
