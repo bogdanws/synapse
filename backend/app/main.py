@@ -16,6 +16,7 @@ from app.auth.routes import router as auth_router
 from app.config import get_settings
 from app.logging import RequestIDMiddleware, configure_logging
 from app.middleware.ratelimit import limiter
+from app.services import events as events_service
 from app.tasks import broker
 
 
@@ -32,6 +33,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     finally:
         if not broker.is_worker_process:
             await broker.shutdown()
+        await events_service.close()
 
 
 def create_app() -> FastAPI:

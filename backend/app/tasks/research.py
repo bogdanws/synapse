@@ -2,8 +2,9 @@
 
 This is intentionally a placeholder. The real implementation will drive the
 LangGraph orchestration of Scout → Scribe → Critic and stream progress events
-over Redis pubsub. For now it just sleeps so the rest of the plumbing
-(enqueue → worker → WebSocket bridge) can be exercised end-to-end.
+over Redis pubsub. For now it just publishes a single `JobCompleted` event so
+the rest of the plumbing (enqueue → worker → pubsub → WebSocket bridge) can be
+exercised end-to-end.
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ from uuid import UUID
 
 import structlog
 
+from app.models.events import JobCompleted
+from app.services.events import publish
 from app.tasks.broker import broker
 
 _log = structlog.get_logger(__name__)
@@ -21,3 +24,4 @@ _log = structlog.get_logger(__name__)
 async def run_research_pipeline(job_id: UUID) -> None:
     """Stub pipeline runner. Replaced in a later change with the real graph."""
     _log.info("research_pipeline_stub_started", job_id=str(job_id))
+    await publish(JobCompleted(job_id=job_id, overall_confidence=0.0))

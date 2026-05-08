@@ -19,8 +19,29 @@ from taskiq import InMemoryBroker
 
 from app.auth.dependencies import current_active_user
 from app.main import app
+from app.models.events import JobCompleted
+from app.services import events as events_service
 from app.tasks import broker
 from app.tasks.research import run_research_pipeline
+
+
+@pytest.fixture(autouse=True)
+def _stub_publish(monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    """Capture published events instead of hitting Redis.
+
+    The stub task publishes a JobCompleted; without this fixture the test would either fail (no Redis) or hang (waiting for a connection).
+    """
+    captured: list[object] = []
+
+    async def _record(event: object) -> None:
+        captured.append(event)
+
+    monkeypatch.setattr(events_service, "publish", _record)
+    # The task imported `publish` by name, so patch the bound reference too.
+    import app.tasks.research as research_module
+
+    monkeypatch.setattr(research_module, "publish", _record)
+    return captured
 
 
 def test_test_environment_uses_in_memory_broker() -> None:
@@ -28,10 +49,17 @@ def test_test_environment_uses_in_memory_broker() -> None:
     assert isinstance(broker, InMemoryBroker)
 
 
-async def test_run_research_pipeline_runs_to_completion() -> None:
-    result = await run_research_pipeline.kiq(uuid4())
+async def test_run_research_pipeline_publishes_job_completed(
+    _stub_publish: list[object],
+) -> None:
+    job_id = uuid4()
+    result = await run_research_pipeline.kiq(job_id)
     awaited = await result.wait_result(timeout=2)
     assert awaited.is_err is False
+    assert len(_stub_publish) == 1
+    event = _stub_publish[0]
+    assert isinstance(event, JobCompleted)
+    assert event.job_id == job_id
 
 
 @pytest.fixture
