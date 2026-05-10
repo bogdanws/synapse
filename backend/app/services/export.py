@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import html
 import re
 
 from markdown_it import MarkdownIt
@@ -102,7 +103,7 @@ def _decorate_claim_spans(html: str, claim_flags: list[ClaimFlag]) -> str:
     def _replace(m: re.Match[str]) -> str:
         claim_id = m.group(1)
         verdict = verdict_map.get(claim_id)
-        if verdict:
+        if verdict is not None:
             return f'<span data-claim="{claim_id}" data-verdict="{verdict}"'
         return m.group(0)
 
@@ -112,7 +113,7 @@ def _decorate_claim_spans(html: str, claim_flags: list[ClaimFlag]) -> str:
 def _html_template(title: str, lang: str, body_html: str) -> str:
     return (
         f'<!DOCTYPE html>\n<html lang="{lang}">\n<head>\n'
-        f'<meta charset="utf-8"><title>{title}</title>\n'
+        f'<meta charset="utf-8"><title>{html.escape(title)}</title>\n'
         f"<style>{_PDF_CSS}</style>\n"
         f"</head>\n<body>\n{body_html}\n</body>\n</html>"
     )
