@@ -6,6 +6,9 @@ export default function JobProgressPage() {
   const { jobId } = useParams({ from: '/research/$jobId' })
   const { messages, status } = useJobStream(jobId)
 
+  const completed = messages.find((m) => m.type === 'job_completed')
+  const sections = messages.filter((m) => m.type === 'section_drafted')
+
   return (
     <main>
       <h1>Research progress</h1>
@@ -21,6 +24,23 @@ export default function JobProgressPage() {
           </li>
         ))}
       </ol>
+      {completed && (
+        <section aria-label="raw report dump">
+          <h2>Raw report</h2>
+          {sections.map((m) => {
+            // Narrowed above by the filter; the cast avoids re-narrowing inside map.
+            const s = (m as Extract<JobMessage, { type: 'section_drafted' }>).section
+            return (
+              <details key={s.id} open>
+                <summary>
+                  <strong>{s.heading}</strong>
+                </summary>
+                <pre style={{ whiteSpace: 'pre-wrap' }}>{s.body_md}</pre>
+              </details>
+            )
+          })}
+        </section>
+      )}
     </main>
   )
 }

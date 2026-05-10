@@ -48,6 +48,22 @@ class Settings(BaseSettings):
     )
     cors_origins: str = Field(default="http://localhost:5173", alias="CORS_ORIGINS")
 
+    @field_validator("openrouter_api_key")
+    @classmethod
+    def _reject_empty_openrouter_api_key(cls, v: str) -> str:
+        if not v or not v.strip():
+            msg = "OPENROUTER_API_KEY must be set to a non-empty value (check .env or environment)"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("exa_api_key")
+    @classmethod
+    def _reject_empty_exa_api_key(cls, v: str) -> str:
+        if not v or not v.strip():
+            msg = "EXA_API_KEY must be set to a non-empty value (check .env or environment)"
+            raise ValueError(msg)
+        return v
+
     @field_validator("jwt_secret")
     @classmethod
     def _reject_empty_jwt_secret(cls, v: str) -> str:

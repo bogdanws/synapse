@@ -1,26 +1,267 @@
-"""Critic - fact-checking agent.
+"""Critic — fact-checking agent.
 
-Verifies the Scribe report against the original sources, scores confidence
-per section, flags unsupported claims (hallucinations).
+Verifies a `ScribeReport` claim-by-claim against the original sources. One LLM call per section, parallelisable; per-section output is light-validated and retried on failure with the model's previous response replayed back as an assistant turn so the model can edit its mistake instead of starting over. Per-section results are then aggregated and the whole `CriticAnnotations` is run through the global validator before being returned.
+
+The agent stays free of pubsub plumbing — `app.agents.critic_graph` wraps it for the LangGraph node and emits `ClaimVerified` events as each section completes.
 """
 
 from __future__ import annotations
 
-from app.models.research import ScribeReport, Source, VerifiedReport
+import re
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
+import structlog
+from pydantic import BaseModel
+
+from app.models.research import (
+    ClaimFlag,
+    CriticAnnotations,
+    ReportSection,
+    ScribeReport,
+    SectionConfidence,
+    Source,
+)
+from app.services.llm import (
+    StructuredRetryError,
+    build_chat_model,
+    invoke_structured_with_retry,
+)
+from app.services.validation import (
+    CriticValidationError,
+    validate_critic_annotations,
+)
+
+_log = structlog.get_logger(__name__)
+
+# One initial attempt plus this many retries on validation failure. Kept at one for cost reasons (Critic runs in parallel across every section, so retries multiply); the conversation-aware retry below makes the single retry meaningfully different from the initial attempt because the model sees its previous bad output.
+_MAX_VALIDATION_RETRIES = 1
+
+# Same regex as the Scribe validator. Duplicated here rather than imported because the validation module's pattern is intentionally module-private — exposing a public alias would invite drift in either direction.
+_CLAIM_SPAN_RE = re.compile(
+    r"<span\b[^>]*\bdata-claim\s*=\s*['\"]([^'\"]+)['\"][^>]*>",
+    re.IGNORECASE,
+)
+
+_SYSTEM_PROMPT = """\
+You are a fact-checker. You will be given one section of a research report (in markdown, with each verifiable claim wrapped in `<span data-claim="...">...</span>`) plus the full pool of sources cited anywhere in the report.
+
+Each source includes a `Credibility` score in [0, 1] computed from the source domain and content signals. Weight evidence accordingly: a high-credibility source (≥ 0.7) can support or contradict a claim on its own; a low-credibility source (< 0.4) alone is not sufficient to return `contradicted` or `unsupported` — treat it as weak corroborating or dissenting signal only.
+
+Your job is to:
+
+1. For every `<span data-claim="<claim_id>">…</span>` in the section, return one entry in `claim_flags` with:
+   - `claim_id`: exactly the id from the span.
+   - `section_id`: the section id passed in (always equals the prefix of `claim_id`).
+   - `verdict`: one of `supported`, `partially_supported`, `unsupported`, `contradicted`.
+   - `rationale`: at most three sentences justifying the verdict.
+   - `supporting_source_ids`: list of source short-ids (`s1`, `s2`, …) that support the claim. Empty when the verdict is `unsupported`.
+2. Return a single `section_confidence` for the section with:
+   - `section_id`: the section id passed in.
+   - `score`: a float in [0, 1] reflecting your confidence that the section's claims are well-sourced overall.
+   - `reasoning`: at most three sentences.
+
+Constraints:
+
+- Output strictly valid JSON — no commentary, no markdown fences.
+- Cover every claim id present in the section. No extras, no duplicates.
+- Only cite source ids that appear in the input list.
+"""
+
+
+class _CriticSectionOutput(BaseModel):
+    """Per-section LLM output. Aggregated across sections to form `CriticAnnotations`."""
+
+    section_confidence: SectionConfidence
+    claim_flags: list[ClaimFlag]
 
 
 class CriticAgent:
     def __init__(self, model: str) -> None:
         self.model = model
 
-    async def verify(self, report: ScribeReport, sources: list[Source]) -> VerifiedReport:
-        """Verify each claim in the report against sources."""
-        raise NotImplementedError
+    async def verify_section(
+        self,
+        *,
+        topic: str,
+        section: ReportSection,
+        sources: list[Source],
+    ) -> _CriticSectionOutput:
+        """Run one LLM call to verify all claims in `section`.
 
-    async def score_section(self, section_text: str, sources: list[Source]) -> float:
-        """Compute confidence score in [0, 1] for one section."""
-        raise NotImplementedError
+        Routed through `invoke_structured_with_retry`, which replays the model's previous (invalid) JSON as an assistant turn on retry so the model can edit its mistake instead of regenerating from scratch.
+        """
+        source_ids = {s.id for s in sources}
+        chat = build_chat_model(self.model).with_structured_output(
+            _CriticSectionOutput,
+            method="json_mode",
+            include_raw=True,
+        )
+        messages: list[Any] = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _build_initial_prompt(topic, section, sources)},
+        ]
 
-    async def flag_hallucinations(self, report: ScribeReport, sources: list[Source]) -> list[str]:
-        """Return a list of flagged unsupported claims."""
-        raise NotImplementedError
+        def _validate(parsed: _CriticSectionOutput) -> None:
+            _validate_section_output(parsed, section, source_ids)
+
+        try:
+            return await invoke_structured_with_retry(
+                chat,
+                messages,
+                validate=_validate,
+                retry_feedback=_retry_feedback_message,
+                max_retries=_MAX_VALIDATION_RETRIES,
+                log_event="critic_section_validation_failed",
+                log=_log.bind(section_id=section.id),
+            )
+        except StructuredRetryError as exc:
+            msg = (
+                f"critic output for section {section.id} failed validation "
+                f"after {exc.attempts} attempts: {exc.last_error}"
+            )
+            raise CriticValidationError(msg) from exc
+
+    def aggregate(
+        self,
+        report: ScribeReport,
+        section_outputs: list[_CriticSectionOutput],
+    ) -> CriticAnnotations:
+        """Combine per-section outputs into a `CriticAnnotations` and run the global validator.
+
+        `section_outputs` may arrive in any order (the node uses `asyncio.as_completed` to interleave events); we sort the aggregated lists by their declared section index so the persisted annotation is deterministic regardless of completion order.
+        """
+        section_index = {s.id: i for i, s in enumerate(report.sections)}
+        confidences = sorted(
+            (out.section_confidence for out in section_outputs),
+            key=lambda c: section_index.get(c.section_id, len(section_index)),
+        )
+        flags = sorted(
+            (flag for out in section_outputs for flag in out.claim_flags),
+            key=lambda f: (
+                section_index.get(f.section_id, len(section_index)),
+                _claim_local_index(f.claim_id),
+            ),
+        )
+        annotations = CriticAnnotations(
+            id=uuid4(),
+            report_id=report.id,
+            section_confidence=confidences,
+            claim_flags=flags,
+            overall_confidence=_overall_confidence(confidences),
+            model=self.model,
+            generated_at=datetime.now(UTC),
+        )
+        validate_critic_annotations(annotations, report)
+        return annotations
+
+
+# ---- helpers --------------------------------------------------------------
+
+
+def _validate_section_output(
+    output: _CriticSectionOutput,
+    section: ReportSection,
+    source_ids: set[str],
+) -> None:
+    """Lightweight per-section check.
+
+    Catches the common modes of model misbehaviour at minimal cost so the retry loop has actionable feedback. The full cross-section invariants (uniqueness across the whole report, etc.) are handled by `validate_critic_annotations` after aggregation.
+    """
+    if output.section_confidence.section_id != section.id:
+        msg = (
+            f"section_confidence.section_id is {output.section_confidence.section_id!r}, "
+            f"expected {section.id!r}"
+        )
+        raise CriticValidationError(msg)
+
+    expected_claims = set(_CLAIM_SPAN_RE.findall(section.body_md))
+    actual_claims = [f.claim_id for f in output.claim_flags]
+
+    duplicates = _duplicates(actual_claims)
+    if duplicates:
+        msg = f"duplicate claim_flags for ids: {sorted(duplicates)}"
+        raise CriticValidationError(msg)
+
+    missing = expected_claims - set(actual_claims)
+    if missing:
+        msg = f"missing claim_flags for section {section.id}: {sorted(missing)}"
+        raise CriticValidationError(msg)
+
+    extras = set(actual_claims) - expected_claims
+    if extras:
+        msg = f"unknown claim_flags in section {section.id}: {sorted(extras)}"
+        raise CriticValidationError(msg)
+
+    for flag in output.claim_flags:
+        if flag.section_id != section.id:
+            msg = (
+                f"flag {flag.claim_id!r} has section_id {flag.section_id!r}, "
+                f"expected {section.id!r}"
+            )
+            raise CriticValidationError(msg)
+        unknown = set(flag.supporting_source_ids) - source_ids
+        if unknown:
+            msg = f"flag {flag.claim_id!r} cites unknown sources: {sorted(unknown)}"
+            raise CriticValidationError(msg)
+
+
+def _build_initial_prompt(
+    topic: str,
+    section: ReportSection,
+    sources: list[Source],
+) -> str:
+    source_block = "\n\n".join(
+        f"[{src.id}] {src.title}\nURL: {src.url}\nCredibility: {src.credibility:.2f}\nSnippet: {src.snippet}"
+        for src in sources
+    )
+    return "\n\n".join(
+        [
+            f"Topic: {topic}",
+            f"Section id: {section.id}",
+            f"Section heading: {section.heading}",
+            f"Section body:\n{section.body_md}",
+            f"Sources:\n{source_block}",
+        ]
+    )
+
+
+def _retry_feedback_message(error: str) -> str:
+    """Targeted feedback paired with the model's previous assistant turn.
+
+    Phrased as an edit on the prior response (rather than "try again from scratch") because the prior response is now visible in the conversation history.
+    """
+    return (
+        "Your previous response failed validation with this error:\n"
+        f"{error}\n\n"
+        "Reply with a fully corrected response in the same JSON shape. "
+        "Preserve the parts that were correct; change only what the error references."
+    )
+
+
+def _overall_confidence(confidences: list[SectionConfidence]) -> float:
+    if not confidences:
+        return 0.0
+    return round(sum(c.score for c in confidences) / len(confidences), 4)
+
+
+def _claim_local_index(claim_id: str) -> int:
+    """Sort key helper: extracts the trailing integer from a claim id like `sec2.c5`.
+
+    Returns a large fallback value for malformed ids so they sort to the end without crashing aggregation; the global validator will then reject the malformed id.
+    """
+    _, _, local = claim_id.partition(".")
+    if local.startswith("c") and local[1:].isdigit():
+        return int(local[1:])
+    return 1_000_000
+
+
+def _duplicates(items: list[str]) -> set[str]:
+    seen: set[str] = set()
+    dupes: set[str] = set()
+    for x in items:
+        if x in seen:
+            dupes.add(x)
+        seen.add(x)
+    return dupes

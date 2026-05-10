@@ -13,7 +13,17 @@ export default function ResearchInputPage() {
     setLoading(true)
     setError(null)
     try {
-      const job = await api.startResearch({ topic })
+      // TODO: replace with a per-agent model picker (RHF + zod) backed by
+      // localStorage defaults. The backend requires all three agents to be
+      // specified, so we send a placeholder until the picker lands.
+      const job = await api.startResearch({
+        topic,
+        models: {
+          scout: 'openrouter/free',
+          scribe: 'openrouter/free',
+          critic: 'openrouter/free',
+        },
+      })
       await navigate({ to: '/research/$jobId', params: { jobId: job.id } })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unexpected error')

@@ -15,9 +15,12 @@ import os
 import sys
 from pathlib import Path
 
-# This script only serializes the OpenAPI schema; it never signs a token. Provide
-# a placeholder so settings validation does not require a real JWT_SECRET in CI.
+# This script only serializes the OpenAPI schema — it never signs a token, calls
+# the LLM, or hits the search API. Provide placeholders so settings validation
+# does not require real credentials in CI.
 os.environ.setdefault("JWT_SECRET", "openapi-dump-placeholder")
+os.environ.setdefault("OPENROUTER_API_KEY", "openapi-dump-placeholder")
+os.environ.setdefault("EXA_API_KEY", "openapi-dump-placeholder")
 
 from app.main import app  # noqa: E402 - import after env setup
 

@@ -473,7 +473,7 @@
           "research"
         ],
         "summary": "Start Research",
-        "description": "Queue a new research job and hand it off to the worker.\n\nPersistence to Postgres is wired in a later change; for now the job descriptor is returned synthetically and the heavy work runs in the taskiq worker process.",
+        "description": "Persist a new research job and hand it off to the worker.\n\nThe row is committed before the task is enqueued so the worker (which loads the job by id) is guaranteed to see it. If the enqueue fails the row is left in `pending`; a later sweep can either retry it or mark it as failed.",
         "operationId": "start_research_api_research_post",
         "requestBody": {
           "content": {
@@ -767,7 +767,8 @@
         },
         "type": "object",
         "required": [
-          "topic"
+          "topic",
+          "models"
         ],
         "title": "ResearchRequest",
         "description": "Inbound request body for POST /api/research."
@@ -1116,8 +1117,7 @@
         "required": [
           "id",
           "heading",
-          "body_md",
-          "cited_source_ids"
+          "body_md"
         ],
         "title": "ReportSection",
         "type": "object"
