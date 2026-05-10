@@ -369,9 +369,40 @@ async def test_export_markdown_returns_file(authed_client_stub_db: AsyncClient) 
     assert verified.report.title in response.text
 
 
-async def test_export_pdf_returns_501(authed_client_stub_db: AsyncClient) -> None:
-    response = await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/export/pdf")
-    assert response.status_code == 501
+async def test_export_pdf_returns_pdf(authed_client_stub_db: AsyncClient) -> None:
+    verified = _make_verified_report()
+    fake_pdf = b"%PDF-1.4 fake"
+    with (
+        patch("app.api.routes.JobRepository.get_report", new=AsyncMock(return_value=verified)),
+        patch("app.api.routes.render_pdf", new=AsyncMock(return_value=fake_pdf)),
+    ):
+        response = await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/export/pdf")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "Content-Disposition" in response.headers
+    assert response.content == fake_pdf
+
+
+async def test_export_pdf_passes_user_id_to_repo(authed_client_stub_db: AsyncClient) -> None:
+    mock_repo = AsyncMock(return_value=_make_verified_report())
+    with (
+        patch("app.api.routes.JobRepository.get_report", new=mock_repo),
+        patch("app.api.routes.render_pdf", new=AsyncMock(return_value=b"%PDF")),
+    ):
+        await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/export/pdf")
+    _, kwargs = mock_repo.await_args
+    assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)
+
+
+async def test_export_markdown_strips_claim_spans(authed_client_stub_db: AsyncClient) -> None:
+    verified = _make_verified_report()
+    with patch(
+        "app.api.routes.JobRepository.get_report",
+        new=AsyncMock(return_value=verified),
+    ):
+        response = await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/export/markdown")
+    assert response.status_code == 200
+    assert "<span" not in response.text
 
 
 async def test_get_report_passes_user_id_to_repo(authed_client_stub_db: AsyncClient) -> None:
