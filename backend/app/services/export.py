@@ -2,7 +2,7 @@
 
 `build_markdown` produces a clean .md file (spans stripped, flagged claims appended).
 `build_html` renders a self-contained HTML document with verdict-decorated claim spans.
-`render_pdf` will be added in a subsequent task.
+`render_pdf` renders a PDF document from the HTML representation of the report.
 """
 
 from __future__ import annotations
@@ -16,7 +16,10 @@ from markdown_it import MarkdownIt
 
 from app.models.research import ClaimFlag, ReportSection, Verdict, VerifiedReport
 
-_SPAN_CLAIM_RE = re.compile(r'<span\s+data-claim="[^"]*">(.*?)</span>', re.DOTALL)
+_SPAN_CLAIM_RE = re.compile(
+    r"<span\b[^>]*\bdata-claim\s*=\s*['\"][^'\"]+['\"][^>]*>(.*?)</span>",
+    re.DOTALL,
+)
 _FLAGGED_VERDICTS = {Verdict.UNSUPPORTED, Verdict.CONTRADICTED}
 
 
@@ -94,7 +97,7 @@ span[data-verdict=unsupported]{background:#ffe0e0;text-decoration:underline wavy
 border-radius:2px;padding:0 2px}
 span[data-verdict=contradicted]{background:#ffe0e0;text-decoration:line-through;\
 border-radius:2px;padding:0 2px}
-ol.sources{font-size:11pt;color:#555}
+ol{font-size:11pt;color:#555}
 @page{margin:2cm}
 """
 
@@ -115,7 +118,7 @@ def _decorate_claim_spans(html: str, claim_flags: list[ClaimFlag]) -> str:
 
 def _html_template(title: str, lang: str, body_html: str) -> str:
     return (
-        f'<!DOCTYPE html>\n<html lang="{lang}">\n<head>\n'
+        f'<!DOCTYPE html>\n<html lang="{html.escape(lang)}">\n<head>\n'
         f'<meta charset="utf-8"><title>{html.escape(title)}</title>\n'
         f"<style>{_PDF_CSS}</style>\n"
         f"</head>\n<body>\n{body_html}\n</body>\n</html>"
@@ -149,10 +152,16 @@ def build_html(verified: VerifiedReport) -> str:
     return _html_template(r.title, verified.job.language, body_html)
 
 
+def _deny_url_fetcher(url: str, timeout: int = 10, ssl_cert_files: object = None) -> None:
+    # The generated HTML is self-contained; any URL reference in report content
+    # (LLM-produced) must not be fetched during PDF rendering to prevent SSRF.
+    raise ValueError(f"External resource fetch denied during PDF export: {url}")
+
+
 def _weasyprint_sync(html: str) -> bytes:
     # Standalone function (not a lambda) so asyncio.to_thread can reference it
     # by name and profilers can attribute CPU time correctly.
-    result: bytes = weasyprint.HTML(string=html).write_pdf()
+    result: bytes = weasyprint.HTML(string=html, url_fetcher=_deny_url_fetcher).write_pdf()
     return result
 
 

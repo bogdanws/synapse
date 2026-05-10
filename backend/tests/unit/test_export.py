@@ -1,4 +1,4 @@
-"""Unit tests for app/services/export.py — markdown builder."""
+"""Unit tests for app/services/export.py — markdown, HTML, and PDF export."""
 
 from __future__ import annotations
 
