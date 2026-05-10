@@ -6,9 +6,11 @@
 """
 from __future__ import annotations
 
+import asyncio
 import html
 import re
 
+import weasyprint
 from markdown_it import MarkdownIt
 
 from app.models.research import ClaimFlag, ReportSection, Verdict, VerifiedReport
@@ -144,3 +146,20 @@ def build_html(verified: VerifiedReport) -> str:
     body_html = md.render("\n".join(lines))
     body_html = _decorate_claim_spans(body_html, verified.annotations.claim_flags)
     return _html_template(r.title, verified.job.language, body_html)
+
+
+def _weasyprint_sync(html: str) -> bytes:
+    # Standalone function (not a lambda) so asyncio.to_thread can reference it
+    # by name and profilers can attribute CPU time correctly.
+    result: bytes = weasyprint.HTML(string=html).write_pdf()
+    return result
+
+
+async def render_pdf(verified: VerifiedReport) -> bytes:
+    """Render a VerifiedReport as PDF bytes.
+
+    WeasyPrint is synchronous and CPU-bound; running it in a thread prevents it
+    from blocking the uvicorn event loop during concurrent requests.
+    """
+    html = build_html(verified)
+    return await asyncio.to_thread(_weasyprint_sync, html)

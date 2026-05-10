@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 from app.models.research import (
@@ -17,7 +18,7 @@ from app.models.research import (
     Verdict,
     VerifiedReport,
 )
-from app.services.export import build_html, build_markdown
+from app.services.export import build_html, build_markdown, render_pdf
 
 _NOW = datetime.now(UTC)
 _JOB_ID = uuid4()
@@ -189,3 +190,29 @@ def test_build_html_contains_source_list() -> None:
     verified = _make_verified()
     html = build_html(verified)
     assert "Example Source" in html
+
+
+async def test_render_pdf_calls_weasyprint_with_html_string() -> None:
+    verified = _make_verified()
+    fake_pdf = b"%PDF-fake"
+
+    with patch("app.services.export.weasyprint") as mock_wp:
+        mock_wp.HTML.return_value.write_pdf.return_value = fake_pdf
+        result = await render_pdf(verified)
+
+    assert result == fake_pdf
+    call_kwargs = mock_wp.HTML.call_args.kwargs
+    assert "<!DOCTYPE html>" in call_kwargs["string"]
+    mock_wp.HTML.return_value.write_pdf.assert_called_once()
+
+
+async def test_render_pdf_returns_bytes() -> None:
+    verified = _make_verified()
+    fake_pdf = b"%PDF-1.4 fake content"
+
+    with patch("app.services.export.weasyprint") as mock_wp:
+        mock_wp.HTML.return_value.write_pdf.return_value = fake_pdf
+        result = await render_pdf(verified)
+
+    assert isinstance(result, bytes)
+    assert result == fake_pdf
