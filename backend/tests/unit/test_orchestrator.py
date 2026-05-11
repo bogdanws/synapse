@@ -291,11 +291,20 @@ async def test_pipeline_happy_path_persists_in_phase_order_and_publishes_complet
     async def capture(event: ProgressEvent) -> None:
         captured.append(event)
 
+    cleaned: list[UUID] = []
+
+    async def _cleanup(jid: UUID) -> None:
+        cleaned.append(jid)
+
     await orch.run_pipeline(
         job_id=job_id,
         session_factory=_make_session_factory(patched_orchestrator["job"]),
         publish=capture,
+        cleanup=_cleanup,
     )
+
+    # Cleanup runs once, after the terminal event, with the right job id.
+    assert cleaned == [job_id]
 
     repo = _aggregate_repo_calls()
     # Status moves scouting → synthesizing → critiquing during the run, then
@@ -329,11 +338,21 @@ async def test_pipeline_scout_failure_publishes_job_failed_and_skips_downstream_
     async def capture(event: ProgressEvent) -> None:
         captured.append(event)
 
+    cleaned: list[UUID] = []
+
+    async def _cleanup(jid: UUID) -> None:
+        cleaned.append(jid)
+
     await orch.run_pipeline(
         job_id=patched_orchestrator["job_id"],
         session_factory=_make_session_factory(patched_orchestrator["job"]),
         publish=capture,
+        cleanup=_cleanup,
     )
+
+    # Cleanup must also fire on the failure path so the persisted event log
+    # doesn't leak for jobs that never reach `done`.
+    assert cleaned == [patched_orchestrator["job_id"]]
 
     repo = _aggregate_repo_calls()
     # Only the scouting status update fires; scribe/critic never run.
@@ -359,6 +378,7 @@ async def test_pipeline_scribe_failure_keeps_sources_but_skips_critic(
         job_id=patched_orchestrator["job_id"],
         session_factory=_make_session_factory(patched_orchestrator["job"]),
         publish=_noop,
+        cleanup=_noop_cleanup,
     )
 
     repo = _aggregate_repo_calls()
@@ -389,6 +409,7 @@ async def test_pipeline_critic_failure_does_not_persist_report(
         job_id=patched_orchestrator["job_id"],
         session_factory=_make_session_factory(patched_orchestrator["job"]),
         publish=_noop,
+        cleanup=_noop_cleanup,
     )
 
     repo = _aggregate_repo_calls()
@@ -410,6 +431,7 @@ async def test_pipeline_publishes_intermediate_events_from_all_three_phases(
         job_id=patched_orchestrator["job_id"],
         session_factory=_make_session_factory(patched_orchestrator["job"]),
         publish=capture,
+        cleanup=_noop_cleanup,
     )
 
     types_in_order = [type(e).__name__ for e in captured]
@@ -424,4 +446,8 @@ async def test_pipeline_publishes_intermediate_events_from_all_three_phases(
 
 
 async def _noop(_event: ProgressEvent) -> None:
+    return None
+
+
+async def _noop_cleanup(_job_id: UUID) -> None:
     return None

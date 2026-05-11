@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Text, UniqueConstraint, func
+from sqlalchemy import TIMESTAMP, BigInteger, ForeignKey, Index, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -122,6 +122,23 @@ class CriticAnnotation(Base):
     generated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
 
     report: Mapped[Report] = relationship(back_populates="critic_annotation")
+
+
+class JobEvent(Base):
+    """Durable per-job log of `ProgressEvent`s for resumable streaming.
+
+    Every `ProgressEvent` published through `app.services.events.publish` is appended here before being forwarded to Redis. A reconnecting WebSocket replays this table to reconstruct the UI from scratch, then attaches to live pub/sub. The `BIGSERIAL` id gives a global monotonic order; per-job ordering uses the compound index `(job_id, id)`. Rows are deleted en bloc by the orchestrator once a job reaches a terminal state — see `app.services.events.cleanup_for_job`.
+    """
+
+    __tablename__ = "job_events"
+    __table_args__ = (Index("ix_job_events_job_id_id", "job_id", "id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    job_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("research_jobs.id", ondelete="CASCADE"))
+    event: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now()
+    )
 
 
 class FollowUp(Base):
