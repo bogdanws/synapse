@@ -5,8 +5,13 @@ import { Button } from '../components/ui/Button'
 import { SynapseMark } from '../components/ui/SynapseMark'
 import { usePreviewResearch } from '../hooks/usePreviewResearch'
 import { useStartResearch } from '../hooks/useStartResearch'
+import { ALLOWED_MODELS } from '../constants/models'
 import { ApiError } from '../services/api'
 import { previewStateSchema, type PreviewState } from './researchPreviewState'
+
+function modelLabel(id: string): string {
+  return ALLOWED_MODELS.find((m) => m.id === id)?.label ?? id
+}
 
 const DEPTH_LABELS: Record<string, string> = {
   shallow: 'Shallow',
@@ -270,6 +275,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           borderBottom: '1px solid var(--line)',
           display: 'flex',
           alignItems: 'center',
+          flexWrap: 'wrap',
           gap: 14,
         }}
       >
@@ -285,26 +291,21 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           ›
         </span>
         <span className="micro">Plan</span>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+        <span className="mono hidden sm:inline" style={{ fontSize: 10, color: 'var(--muted)' }}>
           ›
         </span>
-        <span className="micro" style={{ color: 'var(--muted)' }}>
+        <span className="micro hidden sm:inline" style={{ color: 'var(--muted)' }}>
           Run
         </span>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+        <span className="mono hidden sm:inline" style={{ fontSize: 10, color: 'var(--muted)' }}>
           ›
         </span>
-        <span className="micro" style={{ color: 'var(--muted)' }}>
+        <span className="micro hidden sm:inline" style={{ color: 'var(--muted)' }}>
           Report
         </span>
         <div
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            color: 'var(--scout)',
-          }}
+          className="sm:ml-auto"
+          style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--scout)' }}
         >
           <span className="pulse-dot" />
           <span className="label">Scout has a plan — review before launch</span>
@@ -313,10 +314,8 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
 
       {/* Topic restatement */}
       <div
-        style={{
-          padding: '32px 80px 20px',
-          borderBottom: '1px solid var(--line)',
-        }}
+        className="px-5 sm:px-10 lg:px-20"
+        style={{ paddingTop: 32, paddingBottom: 20, borderBottom: '1px solid var(--line)' }}
       >
         <div className="micro" style={{ marginBottom: 10 }}>
           Your topic
@@ -337,23 +336,14 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
 
       {/* Plan body */}
       <div
-        style={{
-          padding: '36px 80px',
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '1fr 320px',
-          gap: 56,
-        }}
+        className="px-5 sm:px-10 lg:px-20 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 lg:gap-14"
+        style={{ paddingTop: 36, paddingBottom: 36, flex: 1 }}
       >
         {/* Left: sub-questions */}
         <div>
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              marginBottom: 18,
-            }}
+            className="flex flex-wrap items-baseline justify-between gap-y-3"
+            style={{ marginBottom: 18 }}
           >
             <h2
               className="serif"
@@ -416,21 +406,40 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
         </div>
 
         {/* Right rail: run parameters */}
-        <aside style={{ borderLeft: '1px solid var(--line)', paddingLeft: 28 }}>
+        <aside
+          className="border-t pt-7 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-7"
+          style={{ borderColor: 'var(--line)' }}
+        >
           <div className="micro" style={{ marginBottom: 14 }}>
             Run parameters
           </div>
           <Param label="Depth" value={DEPTH_LABELS[formData.depth] ?? formData.depth} />
-          <Param label="Recency" value="Last 12 months" hint="Older as background" />
-          <Param label="Sources" value="Web · Crunchbase · Pitchbook" hint="No social, no Reddit" />
-          <Param label="Min sources" value="≥ 5 per sub‑question" hint="Comprehensive (US‑05)" />
-          <Param label="Length" value="~ 2,500 words" hint="Editable in delivery" />
-          <Param
-            label="Language"
-            value={formData.language.toUpperCase()}
-            hint="Source language detection"
-            last
-          />
+          <div style={{ padding: '10px 0' }}>
+            <div className="micro" style={{ fontSize: 9, marginBottom: 8 }}>
+              Models
+            </div>
+            {Object.entries(formData.models).map(([agent, modelId]) => (
+              <div
+                key={agent}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  marginBottom: 5,
+                }}
+              >
+                <span
+                  className="mono"
+                  style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}
+                >
+                  {agent}
+                </span>
+                <span className="mono" style={{ fontSize: 12 }}>
+                  {modelLabel(modelId)}
+                </span>
+              </div>
+            ))}
+          </div>
 
           {/* TODO: compute estimate from actual depth and question count once the backend exposes timing data */}
           <div
@@ -459,12 +468,11 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
 
       {/* Footer launch bar */}
       <footer
+        className="px-5 sm:px-10 lg:px-20 flex flex-wrap items-center gap-5"
         style={{
-          padding: '20px 80px',
+          paddingTop: 20,
+          paddingBottom: 20,
           borderTop: '1px solid var(--fg)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 20,
           background: 'var(--bg-2)',
         }}
       >
@@ -477,7 +485,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
             {launchError}
           </span>
         )}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+        <div className="ml-auto flex gap-2.5">
           <Button variant="ghost" onClick={() => void navigate({ to: '/research/new' })}>
             ← Back to brief
           </Button>
