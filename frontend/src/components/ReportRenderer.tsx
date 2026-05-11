@@ -1,13 +1,48 @@
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 
-import type { ClaimFlag, ReportSection, Source } from '../types/api'
-import { extractDomain } from '../lib/source-utils'
+import type { ClaimFlag, ReportSection, Source, Verdict } from '../types/api'
+import { credibilityColorOnInverse, extractDomain } from '../lib/source-utils'
 import { Tooltip } from './ui/Tooltip'
 import { cn } from './ui/cn'
+
+// `unsupported` and `contradicted` collapse to critic-red, matching the
+// background-class collapse a few lines below so footnotes agree with the
+// claim highlight they're nested in.
+function verdictColor(verdict: Verdict): string {
+  switch (verdict) {
+    case 'supported':
+      return 'var(--scout)'
+    case 'partially_supported':
+      return 'var(--scribe)'
+    case 'unsupported':
+    case 'contradicted':
+      return 'var(--critic)'
+  }
+}
+
+// Same mapping, but reaches for the inverse-surface variants. Used inside
+// tooltip popups where the background is `--fg` and the page tokens would
+// fall below AA against ivory in dark mode.
+function verdictColorOnInverse(verdict: Verdict): string {
+  switch (verdict) {
+    case 'supported':
+      return 'var(--scout-on-inverse)'
+    case 'partially_supported':
+      return 'var(--scribe-on-inverse)'
+    case 'unsupported':
+    case 'contradicted':
+      return 'var(--critic-on-inverse)'
+  }
+}
+
+// react-markdown's component overrides don't expose parent nodes, so the
+// only clean way for a `<sup>` to learn its surrounding claim's verdict is
+// via context provided by ClaimHighlight.
+const ClaimVerdictContext = createContext<Verdict | null>(null)
 
 /**
  * Allow-list for raw HTML in Scribe's markdown output. Scribe wraps every
@@ -48,28 +83,35 @@ function ClaimHighlight({ id, flag, children }: ClaimHighlightProps) {
         : 'bg-critic-soft'
 
   const isContradicted = flag.verdict === 'contradicted'
+  // Tooltip accent matches the inline highlight so the eye doesn't have to
+  // re-map agent identity between the underline color and the popup label —
+  // but uses the inverse-surface variant since the popup is `bg-fg`.
+  const accent = verdictColorOnInverse(flag.verdict)
 
   const tooltipContent = (
-    <span>
-      <span
-        className="uppercase tracking-widest"
-        style={{ color: isContradicted ? 'var(--critic)' : undefined }}
-      >
-        {flag.verdict.replace(/_/g, ' ')}
-      </span>
-      {' — '}
-      {flag.rationale}
-    </span>
+    <div className="flex flex-col gap-1.5 normal-case tracking-normal py-0.5 max-w-[260px]">
+      <div className="flex items-center gap-1.5">
+        <span
+          className="inline-block w-1 h-1 rounded-full"
+          style={{ background: accent }}
+          aria-hidden
+        />
+        <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: accent }}>
+          {flag.verdict.replace(/_/g, ' ')}
+        </span>
+      </div>
+      <div className="font-serif text-[13px] leading-snug text-bg/95">{flag.rationale}</div>
+    </div>
   )
 
   return (
-    <Tooltip content={tooltipContent}>
+    <Tooltip content={tooltipContent} className="border-none shadow-xl px-3 py-2">
       <span
         data-claim={id}
         className={cn('px-0.5', bgClass, isContradicted && 'line-through')}
         style={isContradicted ? { color: 'var(--critic)' } : undefined}
       >
-        {children}
+        <ClaimVerdictContext.Provider value={flag.verdict}>{children}</ClaimVerdictContext.Provider>
       </span>
     </Tooltip>
   )
@@ -83,13 +125,25 @@ interface FootnoteProps {
 
 function Footnote({ source, label, onSourceClick }: FootnoteProps) {
   const domain = extractDomain(source.url)
+  const verdict = useContext(ClaimVerdictContext)
+  // Outside a flagged claim, fall back to muted rather than borrowing
+  // source credibility — those are different signals.
+  const color = verdict ? verdictColor(verdict) : 'var(--muted)'
+  // Footnote tooltip lives on `bg-fg`, so reach for the inverse-surface
+  // variant — `credibilityColor` is for chips on the page background.
+  const credColor = credibilityColorOnInverse(source.credibility)
   const tooltipContent = (
-    <div className="flex flex-col gap-1 normal-case tracking-normal py-0.5 text-bg">
-      <div className="font-serif text-[13px] leading-tight">{source.title}</div>
-      <div className="flex items-center gap-2 mt-0.5">
-        <span className="font-mono text-[9px] text-bg/70 uppercase tracking-widest">{domain}</span>
-        <span className="w-px h-2 bg-bg/20" />
-        <span className="font-mono text-[9px] text-scout uppercase tracking-widest">
+    <div className="flex flex-col gap-2 normal-case tracking-normal py-0.5 max-w-[260px] text-bg">
+      <div className="font-serif text-[13px] leading-snug text-bg/95">{source.title}</div>
+      <div className="border-t border-bg/15 pt-1.5 flex items-center gap-2">
+        <span className="font-mono text-[9px] text-bg/60 uppercase tracking-widest truncate">
+          {domain}
+        </span>
+        <span className="w-px h-2 bg-bg/20 shrink-0" />
+        <span
+          className="font-mono text-[9px] uppercase tracking-widest shrink-0"
+          style={{ color: credColor }}
+        >
           Cred .{(source.credibility * 100).toFixed(0)}
         </span>
       </div>
@@ -110,11 +164,12 @@ function Footnote({ source, label, onSourceClick }: FootnoteProps) {
   }
 
   return (
-    <Tooltip content={tooltipContent} className="bg-fg text-bg border-none shadow-xl lowercase">
+    <Tooltip content={tooltipContent} className="border-none shadow-xl px-3 py-2">
       <a
         href={`#${source.id}`}
         onClick={handleClick}
-        className="inline-block px-0.5 font-mono text-[10px] font-bold text-scout hover:text-scout/80 no-underline"
+        className="inline-block px-0.5 font-mono text-[10px] font-bold no-underline transition-opacity hover:opacity-70"
+        style={{ color }}
       >
         [{label}]
       </a>

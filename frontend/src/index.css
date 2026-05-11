@@ -38,6 +38,15 @@
   --critic: oklch(0.5 0.17 25);
   --critic-soft: oklch(0.5 0.17 25 / 0.1);
 
+  /* Agent identities tuned for *inverse* surfaces (tooltip popups, chips on
+   * `bg-fg`). The base agent tokens sit at mid luminance for use against the
+   * page background; on an ink-dark tooltip they need to climb, on an ivory
+   * tooltip they need to drop. Override per theme below. */
+  --scout-on-inverse: oklch(0.78 0.14 240);
+  --scribe-on-inverse: oklch(0.85 0.14 75);
+  --critic-on-inverse: oklch(0.72 0.17 25);
+  --muted-on-inverse: oklch(0.74 0.01 80);
+
   /* Semantic aliases — components reference these, not the raw scale, so
    * dark mode swaps just by overriding the alias targets below. */
   --bg: var(--ivory);
@@ -72,6 +81,13 @@
   --scribe-soft: oklch(0.78 0.14 75 / 0.16);
   --critic: oklch(0.68 0.17 25);
   --critic-soft: oklch(0.68 0.17 25 / 0.14);
+
+  /* On-inverse: tooltip is ivory in dark mode, so accents must drop in
+   * luminance to keep AA contrast against the popup background. */
+  --scout-on-inverse: oklch(0.5 0.14 240);
+  --scribe-on-inverse: oklch(0.5 0.13 60);
+  --critic-on-inverse: oklch(0.55 0.17 25);
+  --muted-on-inverse: oklch(0.45 0.01 80);
 }
 
 /*
@@ -244,11 +260,18 @@
     background: transparent;
   }
 
-  /* Highlight source row driven by JS state (cleared after 2 s by scrollToSource timer) */
+  /* Reserve the outline channel so toggling the highlight doesn't shift
+   * layout, and so `outline-color` is the only thing the animation needs
+   * to interpolate (animating `outline` itself is not well supported). */
+  .source-row {
+    outline: 1px solid transparent;
+  }
+
+  /* Highlight source row driven by JS state (cleared after 2 s by
+   * scrollToSource timer). The keyframe blooms quickly, holds, then eases
+   * back to transparent so the row "breathes" instead of snapping. */
   .source-row[data-highlighted='true'] {
-    background-color: var(--scout-soft);
-    outline: 1px solid var(--scout);
-    transition: background-color 0.5s ease-out;
+    animation: source-flash 2s ease-out;
   }
 }
 
@@ -261,6 +284,22 @@
   50% {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes source-flash {
+  0% {
+    background-color: transparent;
+    outline-color: transparent;
+  }
+  15%,
+  55% {
+    background-color: var(--scout-soft);
+    outline-color: var(--scout);
+  }
+  100% {
+    background-color: transparent;
+    outline-color: transparent;
   }
 }
 

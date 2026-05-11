@@ -24,3 +24,16 @@ export function credibilityColor(score: number): string {
   if (score > 0.6) return 'var(--muted)'
   return 'var(--critic)'
 }
+
+/**
+ * Same thresholds as `credibilityColor`, but returns the inverse-surface
+ * variant of each token. Use on tooltip popups and any other chip rendered
+ * on `bg-fg`, where the page-context tokens fail AA against ivory in dark
+ * mode (and read flat against ink in light mode).
+ */
+export function credibilityColorOnInverse(score: number): string {
+  if (score > 0.9) return 'var(--scout-on-inverse)'
+  if (score > 0.8) return 'var(--scribe-on-inverse)'
+  if (score > 0.6) return 'var(--muted-on-inverse)'
+  return 'var(--critic-on-inverse)'
+}
