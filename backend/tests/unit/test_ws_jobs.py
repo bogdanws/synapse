@@ -11,8 +11,10 @@ from uuid import UUID, uuid4
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from limits import parse
 from starlette.websockets import WebSocketDisconnect
 
+from app.api import ws as ws_api
 from app.config import get_settings
 from app.db.session import get_db
 from app.main import app
@@ -227,3 +229,27 @@ def test_ws_rejects_unknown_or_unauthorized_job(monkeypatch: pytest.MonkeyPatch)
     ):
         pass
     assert excinfo.value.code == 1008
+
+
+def test_ws_rate_limits_connection_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    job_id = uuid4()
+    user_id = uuid4()
+    _patch_job(monkeypatch, None)
+    monkeypatch.setattr(ws_api, "_WS_CONNECT_LIMIT", parse("1/minute"))
+
+    client = TestClient(app)
+    client.cookies.set("synapse_auth", _mint_cookie(str(user_id)))
+
+    with (
+        pytest.raises(WebSocketDisconnect) as first,
+        client.websocket_connect(f"/ws/jobs/{job_id}"),
+    ):
+        pass
+    assert first.value.code == 1008
+
+    with (
+        pytest.raises(WebSocketDisconnect) as second,
+        client.websocket_connect(f"/ws/jobs/{job_id}"),
+    ):
+        pass
+    assert second.value.code == 1013

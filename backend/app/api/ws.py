@@ -16,11 +16,13 @@ import jwt
 import structlog
 from fastapi import APIRouter, Depends, FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.openapi.utils import get_openapi
+from limits import parse
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_db
+from app.middleware.ratelimit import limiter
 from app.models.events import JobSnapshot, ProgressEvent
 from app.services import events as events_service
 from app.services.persistence import JobNotFoundError, JobRepository
@@ -35,6 +37,8 @@ _JWT_AUDIENCE = ["fastapi-users:auth"]
 
 # Event types after which the server hangs up cleanly. Letting the client know "no more events are coming" is more useful than a silent idle connection.
 _TERMINAL_EVENT_TYPES = frozenset({"job_completed", "job_failed"})
+
+_WS_CONNECT_LIMIT = parse("30/minute")
 
 
 def _user_id_from_cookie(token: str | None) -> UUID | None:
@@ -58,6 +62,22 @@ def _user_id_from_cookie(token: str | None) -> UUID | None:
         return None
 
 
+def _rate_limit_key(websocket: WebSocket, user_id: UUID | None) -> str:
+    if user_id is not None:
+        return f"user:{user_id}"
+    if websocket.client is not None:
+        return f"ip:{websocket.client.host}"
+    return "ip:unknown"
+
+
+def _ws_rate_limit_exceeded(websocket: WebSocket, user_id: UUID | None) -> bool:
+    if not limiter.enabled:
+        return False
+    return not limiter.limiter.hit(
+        _WS_CONNECT_LIMIT, "ws.jobs", _rate_limit_key(websocket, user_id)
+    )
+
+
 @router.websocket("/ws/jobs/{job_id}")
 async def jobs_ws(
     websocket: WebSocket,
@@ -65,6 +85,9 @@ async def jobs_ws(
     session: AsyncSession = Depends(get_db),
 ) -> None:
     user_id = _user_id_from_cookie(websocket.cookies.get("synapse_auth"))
+    if _ws_rate_limit_exceeded(websocket, user_id):
+        await websocket.close(code=status.WS_1013_TRY_AGAIN_LATER)
+        return
     if user_id is None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
