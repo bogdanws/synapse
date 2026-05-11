@@ -61,10 +61,14 @@ export function useJobStream(jobId: string, options: UseJobStreamOptions = {}): 
       const current = ws
 
       const onOpen = () => {
+        if (!active) return
         attempts = 0
         setStatusState({ jobId, status: 'open' })
       }
-      const onError = () => setStatusState({ jobId, status: 'error' })
+      const onError = () => {
+        if (!active) return
+        setStatusState({ jobId, status: 'error' })
+      }
       const onClose = (event: CloseEvent) => {
         if (!active) return
         const delay = RECONNECT_DELAYS_MS[attempts]
@@ -78,6 +82,7 @@ export function useJobStream(jobId: string, options: UseJobStreamOptions = {}): 
         setStatusState({ jobId, status: 'closed' })
       }
       const onMessage = (event: MessageEvent<string>) => {
+        if (!active) return
         const parsed = parseMessage(event.data)
         if (!parsed) return
         setEntries((prev) =>
