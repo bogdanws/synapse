@@ -62,7 +62,7 @@ export function SourceRow({ source, index, highlighted }: SourceRowProps) {
           height={16}
           style={{ flexShrink: 0 }}
           onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none'
+            ;(e.target as HTMLImageElement).style.display = 'none'
           }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>

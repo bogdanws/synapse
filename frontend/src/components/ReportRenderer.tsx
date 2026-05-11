@@ -129,7 +129,12 @@ interface ReportRendererProps {
   onSourceClick?: (id: string) => void
 }
 
-export function ReportRenderer({ section, claimFlags, sources, onSourceClick }: ReportRendererProps) {
+export function ReportRenderer({
+  section,
+  claimFlags,
+  sources,
+  onSourceClick,
+}: ReportRendererProps) {
   // O(1) lookup for footnotes — rebuilt only when the source list changes.
   const sourceMap = useMemo(() => {
     const map = new Map<string, Source>()

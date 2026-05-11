@@ -1,6 +1,11 @@
 import { ConfidenceBar } from './ConfidenceBar'
 import { ReportRenderer } from './ReportRenderer'
-import type { ClaimFlag, ReportSection as ReportSectionType, SectionConfidence, Source } from '../types/api'
+import type {
+  ClaimFlag,
+  ReportSection as ReportSectionType,
+  SectionConfidence,
+  Source,
+} from '../types/api'
 
 interface ReportSectionProps {
   num: number
@@ -11,7 +16,14 @@ interface ReportSectionProps {
   onSourceClick?: (id: string) => void
 }
 
-export function ReportSection({ num, section, confidence, claimFlags, sources, onSourceClick }: ReportSectionProps) {
+export function ReportSection({
+  num,
+  section,
+  confidence,
+  claimFlags,
+  sources,
+  onSourceClick,
+}: ReportSectionProps) {
   return (
     <section>
       <div className="flex items-baseline gap-4 mb-2">
@@ -47,7 +59,12 @@ export function ReportSection({ num, section, confidence, claimFlags, sources, o
           maxWidth: 680,
         }}
       >
-        <ReportRenderer section={section} claimFlags={claimFlags} sources={sources} onSourceClick={onSourceClick} />
+        <ReportRenderer
+          section={section}
+          claimFlags={claimFlags}
+          sources={sources}
+          onSourceClick={onSourceClick}
+        />
       </div>
     </section>
   )
