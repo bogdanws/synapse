@@ -699,7 +699,7 @@ export type ProgressEvent = ({
  * First message sent on a WebSocket connection.
  *
  * Lets a client that connected mid-pipeline render the current state instead of waiting for the next event.
- * `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
+ * `job` is optional so callers can still emit an identity-only snapshot when no persisted job state is available.
  */
 export type JobSnapshot = {
     /**

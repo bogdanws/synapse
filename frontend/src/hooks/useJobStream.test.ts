@@ -26,7 +26,7 @@ class MockWebSocket {
     this.listeners[type] = (this.listeners[type] ?? []).filter((h) => h !== handler)
   }
 
-  close(code?: number) {
+  close(code = 1000) {
     this.closeArgs = code
     this.readyState = 3
     this.dispatch('close', { code })
@@ -52,6 +52,7 @@ class MockWebSocket {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   MockWebSocket.instances = []
 })
 
@@ -112,6 +113,75 @@ describe('useJobStream', () => {
     const { result } = renderHook(() => useJobStream('j', { factory }))
     act(() => MockWebSocket.instances[0]!.emitError())
     expect(result.current.status).toBe('error')
+  })
+
+  it('reconnects with backoff after an abnormal close', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useJobStream('j', { factory }))
+    const first = MockWebSocket.instances[0]!
+
+    act(() => first.emitMessage(JSON.stringify({ type: 'snapshot', job_id: 'j' })))
+    expect(result.current.messages).toHaveLength(1)
+
+    act(() => first.close(1006))
+    expect(result.current.status).toBe('connecting')
+    expect(result.current.messages).toHaveLength(0)
+    expect(MockWebSocket.instances).toHaveLength(1)
+
+    act(() => vi.advanceTimersByTime(1000))
+    expect(MockWebSocket.instances).toHaveLength(2)
+    expect(MockWebSocket.instances[1]!.url).toMatch(/\/ws\/jobs\/j$/)
+  })
+
+  it('stops reconnecting after the retry budget is exhausted', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useJobStream('j', { factory }))
+
+    act(() => MockWebSocket.instances[0]!.close(1006))
+    act(() => vi.advanceTimersByTime(1000))
+    act(() => MockWebSocket.instances[1]!.close(1006))
+    act(() => vi.advanceTimersByTime(2000))
+    act(() => MockWebSocket.instances[2]!.close(1006))
+    act(() => vi.advanceTimersByTime(4000))
+    act(() => MockWebSocket.instances[3]!.close(1006))
+
+    expect(result.current.status).toBe('closed')
+    expect(MockWebSocket.instances).toHaveLength(4)
+  })
+
+  it('restores the retry budget after a reconnect opens', () => {
+    vi.useFakeTimers()
+    renderHook(() => useJobStream('j', { factory }))
+
+    act(() => MockWebSocket.instances[0]!.close(1006))
+    act(() => vi.advanceTimersByTime(1000))
+    act(() => MockWebSocket.instances[1]!.open())
+    act(() => MockWebSocket.instances[1]!.close(1006))
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(MockWebSocket.instances).toHaveLength(3)
+  })
+
+  it('does not reconnect after a normal close', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useJobStream('j', { factory }))
+
+    act(() => MockWebSocket.instances[0]!.close(1000))
+    act(() => vi.runAllTimers())
+
+    expect(result.current.status).toBe('closed')
+    expect(MockWebSocket.instances).toHaveLength(1)
+  })
+
+  it('cancels pending reconnects on unmount', () => {
+    vi.useFakeTimers()
+    const { unmount } = renderHook(() => useJobStream('j', { factory }))
+
+    act(() => MockWebSocket.instances[0]!.close(1006))
+    unmount()
+    act(() => vi.runAllTimers())
+
+    expect(MockWebSocket.instances).toHaveLength(1)
   })
 
   it('falls back to the global WebSocket when no factory is provided', () => {
