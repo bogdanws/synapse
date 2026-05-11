@@ -51,6 +51,8 @@ describe('RegisterPage', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: /create account/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
@@ -59,6 +61,8 @@ describe('RegisterPage', () => {
   it('shows error on password confirmation mismatch', async () => {
     renderPage()
 
+    await userEvent.type(screen.getByLabelText(/first name/i), 'Anya')
+    await userEvent.type(screen.getByLabelText(/last name/i), 'Reuter')
     await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'password123')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'different')
@@ -71,7 +75,7 @@ describe('RegisterPage', () => {
 
   it('calls register then login and redirects', async () => {
     vi.mocked(registerRegisterApiAuthRegisterPost).mockResolvedValue({
-      data: { id: 'u1', email: 'test@example.com' },
+      data: { id: 'u1', email: 'test@example.com', first_name: 'Anya', last_name: 'Reuter' },
       response: { ok: true, status: 201 } as Response,
       request: {} as Request,
     } as never)
@@ -84,6 +88,8 @@ describe('RegisterPage', () => {
 
     renderPage()
 
+    await userEvent.type(screen.getByLabelText(/first name/i), 'Anya')
+    await userEvent.type(screen.getByLabelText(/last name/i), 'Reuter')
     await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'password123')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123')
@@ -91,7 +97,12 @@ describe('RegisterPage', () => {
 
     await waitFor(() => {
       expect(registerRegisterApiAuthRegisterPost).toHaveBeenCalledWith({
-        body: { email: 'test@example.com', password: 'password123' },
+        body: {
+          email: 'test@example.com',
+          password: 'password123',
+          first_name: 'Anya',
+          last_name: 'Reuter',
+        },
       })
       expect(authCookieLoginApiAuthLoginPost).toHaveBeenCalledWith({
         body: { username: 'test@example.com', password: 'password123' },
@@ -109,6 +120,8 @@ describe('RegisterPage', () => {
 
     renderPage()
 
+    await userEvent.type(screen.getByLabelText(/first name/i), 'Anya')
+    await userEvent.type(screen.getByLabelText(/last name/i), 'Reuter')
     await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com')
     await userEvent.type(screen.getByLabelText(/^password$/i), 'password123')
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123')
