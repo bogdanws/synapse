@@ -243,6 +243,13 @@
   .scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
+  /* Highlight target source row when linked from a footnote */
+  .source-row:target {
+    background-color: var(--scout-soft);
+    outline: 1px solid var(--scout);
+    transition: background-color 0.5s ease-out;
+  }
 }
 
 @keyframes pulse {

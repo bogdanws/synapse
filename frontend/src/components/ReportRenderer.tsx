@@ -3,7 +3,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 
-import type { ClaimFlag, ReportSection } from '../types/api'
+import type { ClaimFlag, ReportSection, Source } from '../types/api'
 import { Tooltip } from './ui/Tooltip'
 import { cn } from './ui/cn'
 
@@ -15,7 +15,7 @@ import { cn } from './ui/cn'
  * fed to the LLM is untrusted, so without this gate `rehypeRaw` would render
  * any injected `<script>` or `onerror=…` attribute live in the user's
  * browser. The schema starts from GitHub's defaults and only extends `span`
- * to permit `data-*` (encoded as the `'data*'` wildcard per
+ * and `sup` to permit `data-*` (encoded as the `'data*'` wildcard per
  * `hast-util-sanitize`).
  */
 const claimSpanSchema: SanitizeSchema = {
@@ -23,6 +23,7 @@ const claimSpanSchema: SanitizeSchema = {
   attributes: {
     ...defaultSchema.attributes,
     span: [...(defaultSchema.attributes?.span ?? []), 'data*'],
+    sup: [...(defaultSchema.attributes?.sup ?? []), 'data*'],
   },
 }
 
@@ -72,12 +73,66 @@ function ClaimHighlight({ id, flag, children }: ClaimHighlightProps) {
   )
 }
 
+interface FootnoteProps {
+  sourceId: string
+  sources: Source[]
+  label: string
+}
+
+function Footnote({ sourceId, sources, label }: FootnoteProps) {
+  const source = sources.find((s) => s.id === sourceId)
+  if (!source) return <sup>{label}</sup>
+
+  const domain = new URL(source.url).hostname.replace(/^www\./, '')
+  const tooltipContent = (
+    <div className="flex flex-col gap-1 normal-case tracking-normal py-0.5 text-bg">
+      <div className="font-serif text-[13px] leading-tight">{source.title}</div>
+      <div className="flex items-center gap-2 mt-0.5">
+        <span className="font-mono text-[9px] text-bg/70 uppercase tracking-widest">{domain}</span>
+        <span className="w-px h-2 bg-bg/20" />
+        <span className="font-mono text-[9px] text-scout uppercase tracking-widest">
+          Cred .{(source.credibility * 100).toFixed(0)}
+        </span>
+      </div>
+    </div>
+  )
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const target = document.getElementById(sourceId)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Update hash without jumping immediately (since we handled scroll)
+      window.history.pushState(null, '', `#${sourceId}`)
+    }
+  }
+
+  return (
+    <Tooltip content={tooltipContent} className="bg-fg text-bg border-none shadow-xl lowercase">
+      <a
+        href={`#${sourceId}`}
+        onClick={handleClick}
+        className="inline-block px-0.5 -mt-2 font-mono text-[10px] font-bold text-scout hover:text-scout/80 no-underline"
+      >
+        [{label}]
+      </a>
+    </Tooltip>
+  )
+}
+
 interface ReportRendererProps {
   section: ReportSection
   claimFlags: ClaimFlag[]
+  sources: Source[]
 }
 
-export function ReportRenderer({ section, claimFlags }: ReportRendererProps) {
+export function ReportRenderer({ section, claimFlags, sources }: ReportRendererProps) {
+  // Scribe produces raw [^sX] syntax. Pre-process to wrap in <sup data-source="sX">
+  const bodyWithFootnotes = section.body_md.replace(/\[\^(s\d+)\]/g, (match, id) => {
+    const num = id.replace('s', '')
+    return `<sup data-source="${id}">${num}</sup>`
+  })
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -94,9 +149,19 @@ export function ReportRenderer({ section, claimFlags }: ReportRendererProps) {
           }
           return <span {...props} />
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sup: ({ node, children, ...props }: any) => {
+          const sourceId = node?.properties?.dataSource as string | undefined
+          if (sourceId) {
+            return (
+              <Footnote sourceId={sourceId} sources={sources} label={String(children)} />
+            )
+          }
+          return <sup {...props}>{children}</sup>
+        },
       }}
     >
-      {section.body_md}
+      {bodyWithFootnotes}
     </ReactMarkdown>
   )
 }
