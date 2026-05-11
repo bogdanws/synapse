@@ -37,13 +37,13 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>
 
 const EXAMPLE_QUESTIONS = [
-  'What does the latest evidence say about microplastics in human placenta?',
-  'Trace the regulatory history of GLP-1 agonists for non-diabetic use, 2020 to today.',
-  "Who actually owns Romania's offshore Black Sea gas, and how has it shifted since 2022?",
-  'Compare battery recycling economics: EU vs. China vs. US, post-IRA.',
+  "What's the current state of evidence on GLP-1 agonists and cardiovascular outcomes in non-diabetic patients?",
+  'How did the EU AI Act risk tiers evolve between the 2021 draft and final passage, and who pushed which changes?',
+  "Who controls the world's lithium refining capacity, and how has that concentration shifted since 2020?",
+  'Heat pump adoption: what is working in the Nordics that is not translating to the UK, and why?',
 ]
 
-const DEPTH_LABELS: Record<string, string> = {
+const DEPTH_LABELS: Record<FormData['depth'], string> = {
   shallow: 'Shallow',
   standard: 'Standard',
   deep: 'Deep',
@@ -169,25 +169,40 @@ export default function ResearchInputPage() {
   const { ref: topicRef, ...topicRest } = register('topic')
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-bg text-fg">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-8 py-4 border-b border-line flex-shrink-0">
+    <div
+      className="flex flex-col h-screen overflow-hidden"
+      style={{ background: 'var(--bg)', color: 'var(--fg)' }}
+    >
+      {/* App chrome */}
+      <header
+        className="flex items-center justify-between px-8 py-4 shrink-0"
+        style={{ borderBottom: '1px solid var(--line)' }}
+      >
         <div className="flex items-center gap-7">
           <div className="flex items-center gap-2.5">
             <SynapseMark size={28} />
-            <span className="serif text-[17px] font-medium">Synapse</span>
+            <span
+              className="serif"
+              style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}
+            >
+              Synapse
+            </span>
           </div>
           <nav className="flex gap-[18px]">
             <span className="label">New brief</span>
             <Link
               to="/history"
-              className="label text-muted"
+              className="label"
               style={{ textDecoration: 'none', color: 'var(--muted)' }}
             >
               Library
             </Link>
-            <span className="label text-muted">Sources</span>
-            <span className="label text-muted">Settings</span>
+            <span className="label" style={{ color: 'var(--muted)' }}>
+              Sources
+            </span>
+            <span className="label" style={{ color: 'var(--muted)' }}>
+              Settings
+            </span>
           </nav>
         </div>
         <div className="flex items-center gap-3.5">
@@ -196,7 +211,8 @@ export default function ResearchInputPage() {
             {briefCount} / 50 briefs this month
           </span>
           <div
-            className="w-7 h-7 rounded-full bg-bg-3 flex items-center justify-center serif text-[13px]"
+            className="w-7 h-7 rounded-full flex items-center justify-center serif"
+            style={{ background: 'var(--bg-3)', fontSize: 13 }}
             aria-label="user avatar"
           >
             {me ? getInitials(me.email) : ''}
@@ -204,20 +220,39 @@ export default function ResearchInputPage() {
         </div>
       </header>
 
-      {/* Main grid */}
-      <div className="flex-1 grid grid-cols-[1fr_280px] overflow-hidden">
-        {/* Left column */}
-        <main className="px-20 py-[60px] flex flex-col justify-center overflow-auto">
-          <div className="micro mb-4">{formatNow()}</div>
-          <h1 className="serif text-[64px] leading-none tracking-[-0.03em] font-light">
+      {/* Main */}
+      <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '1fr 320px' }}>
+        {/* Composition column */}
+        <main className="flex flex-col overflow-auto" style={{ padding: '60px 80px' }}>
+          <div className="micro" style={{ marginBottom: 16 }}>
+            {formatNow()}
+          </div>
+          <h1
+            className="serif m-0"
+            style={{
+              fontSize: 64,
+              lineHeight: 1,
+              letterSpacing: '-0.03em',
+              fontWeight: 300,
+            }}
+          >
             What would you like
             <br />
-            to <em className="italic">understand</em>?
+            to <em>understand</em>?
           </h1>
 
           {/* Topic card */}
-          <div className="mt-12 border border-fg p-6 bg-bg-2">
-            <div className="label mb-3 text-muted">Topic</div>
+          <div
+            style={{
+              marginTop: 48,
+              border: '1px solid var(--fg)',
+              padding: 24,
+              background: 'var(--bg-2)',
+            }}
+          >
+            <div className="label" style={{ marginBottom: 12, color: 'var(--muted)' }}>
+              Topic
+            </div>
             <textarea
               {...topicRest}
               ref={(el) => {
@@ -226,12 +261,22 @@ export default function ResearchInputPage() {
               }}
               placeholder="Type your research topic here..."
               rows={1}
-              className="w-full bg-transparent serif text-[28px] leading-[1.3] font-light text-fg placeholder:text-muted outline-none resize-none overflow-hidden"
-              style={{ minHeight: 80 }}
+              className="serif w-full bg-transparent outline-none resize-none overflow-hidden"
+              style={{
+                fontSize: 28,
+                lineHeight: 1.3,
+                fontWeight: 300,
+                color: 'var(--fg)',
+                minHeight: 80,
+                letterSpacing: '-0.005em',
+              }}
             />
 
-            {/* Pills row */}
-            <div className="flex flex-wrap items-center gap-3 mt-6 pt-5 border-t border-line">
+            {/* Controls row — depth + three agent model selectors, actions on the right. */}
+            <div
+              className="flex flex-wrap items-center gap-3"
+              style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}
+            >
               <Pill
                 label="Depth"
                 value={
@@ -239,6 +284,7 @@ export default function ResearchInputPage() {
                     value={depthValue}
                     onChange={(e) => setValue('depth', e.target.value as FormData['depth'])}
                     className="bg-transparent font-sans text-[12px] cursor-pointer outline-none"
+                    aria-label="Research depth"
                   >
                     <option value="shallow">{DEPTH_LABELS.shallow}</option>
                     <option value="standard">{DEPTH_LABELS.standard}</option>
@@ -258,6 +304,7 @@ export default function ResearchInputPage() {
                       value={models[agent]}
                       onChange={(e) => handleModelChange(agent, e.target.value)}
                       className="bg-transparent font-sans text-[12px] cursor-pointer outline-none max-w-[140px]"
+                      aria-label={`${AGENTS[agent].name} model`}
                     >
                       {ALLOWED_MODELS.map((m) => (
                         <option key={m.id} value={m.id}>
@@ -270,76 +317,90 @@ export default function ResearchInputPage() {
                 />
               ))}
 
-              {/* Display-only pills matching the figma layout; not yet wired to backend. */}
-              <Pill label="Recency" value="Last 12 months" disabled />
-              <Pill label="Sources" value="Web + Crunchbase + Pitchbook" disabled />
-              <Pill label="Min / question" value="≥ 5 sources" disabled />
-              <Pill label="Length" value="~ 2,500 words" disabled />
-              <Pill label="Deliver as" value="PDF + Markdown" disabled />
-
-              <div className="ml-auto flex gap-2">
-                <Button variant="ghost" size="sm" disabled>
-                  + Constraint
-                </Button>
+              <div className="ml-auto flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={previewResearch.isPending}
                   onClick={handleSubmit(onPreview)}
                 >
-                  {previewResearch.isPending ? 'Generating plan...' : 'Preview plan →'}
+                  {previewResearch.isPending ? 'Generating plan…' : 'Preview plan →'}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSubmit(onSubmit)}
+                  disabled={startResearch.isPending}
+                >
+                  {startResearch.isPending ? 'Starting…' : 'Start brief →'}
                 </Button>
               </div>
             </div>
 
-            {/* Submit */}
-            <div className="mt-6 flex items-center gap-4">
-              <Button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                disabled={startResearch.isPending}
-              >
-                Start brief →
-              </Button>
-              {errors.topic && (
-                <span className="text-[12px] text-critic" role="alert">
-                  {errors.topic.message}
-                </span>
-              )}
-              {showErrorInline && (
-                <span className="text-[12px] text-critic" role="alert">
-                  {submitError.message}
-                </span>
-              )}
-              {showPreviewErrorInline && (
-                <span className="text-[12px] text-critic" role="alert">
-                  {previewError.message}
-                </span>
-              )}
-            </div>
+            {(errors.topic || showErrorInline || showPreviewErrorInline) && (
+              <div className="flex flex-col gap-1" style={{ marginTop: 14 }}>
+                {errors.topic && (
+                  <span
+                    className="micro"
+                    role="alert"
+                    style={{ color: 'var(--critic)', letterSpacing: '0.08em' }}
+                  >
+                    {errors.topic.message}
+                  </span>
+                )}
+                {showErrorInline && (
+                  <span
+                    className="micro"
+                    role="alert"
+                    style={{ color: 'var(--critic)', letterSpacing: '0.08em' }}
+                  >
+                    {submitError.message}
+                  </span>
+                )}
+                {showPreviewErrorInline && (
+                  <span
+                    className="micro"
+                    role="alert"
+                    style={{ color: 'var(--critic)', letterSpacing: '0.08em' }}
+                  >
+                    {previewError.message}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Recent questions */}
-          <div className="mt-12">
-            <div className="micro mb-3.5">Or start from a recent question</div>
+          {/* Recent / example questions */}
+          <div style={{ marginTop: 48 }}>
+            <div className="micro" style={{ marginBottom: 14 }}>
+              Or start from a recent question
+            </div>
             {/* TODO: replace static examples with follow-ups from history. */}
-            <div className="grid grid-cols-2 border-t border-line-soft">
+            <div className="grid grid-cols-2" style={{ borderTop: '1px solid var(--line-soft)' }}>
               {EXAMPLE_QUESTIONS.map((q, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => handleExampleClick(q)}
-                  className="flex items-start gap-3.5 py-[18px] text-left border-b border-line-soft hover:bg-bg-2 transition-colors"
+                  className="flex items-start gap-3.5 text-left transition-colors hover:bg-bg-2"
                   style={{
+                    padding: '18px 20px 18px 0',
+                    borderBottom: '1px solid var(--line-soft)',
                     borderRight: i % 2 === 0 ? '1px solid var(--line-soft)' : 'none',
-                    paddingLeft: i % 2 === 1 ? '24px' : '0',
-                    paddingRight: i % 2 === 0 ? '20px' : '0',
+                    paddingLeft: i % 2 === 1 ? 24 : 0,
                   }}
                 >
-                  <span className="font-mono text-[11px] text-muted pt-[3px]">
+                  <span
+                    className="font-mono"
+                    style={{ fontSize: 11, color: 'var(--muted)', paddingTop: 3 }}
+                  >
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className="serif text-[16px] leading-[1.4] text-fg-2">{q}</span>
+                  <span
+                    className="serif"
+                    style={{ fontSize: 16, lineHeight: 1.4, color: 'var(--fg-2)' }}
+                  >
+                    {q}
+                  </span>
                 </button>
               ))}
             </div>
@@ -347,23 +408,63 @@ export default function ResearchInputPage() {
         </main>
 
         {/* Library sidebar */}
-        <aside className="border-l border-line p-6 bg-bg-2 overflow-auto">
-          <div className="micro mb-4">Library — recent</div>
+        <aside
+          className="overflow-auto"
+          style={{
+            borderLeft: '1px solid var(--line)',
+            padding: '24px 20px',
+            background: 'var(--bg-2)',
+          }}
+        >
+          <div className="flex items-baseline justify-between" style={{ marginBottom: 16 }}>
+            <span className="micro">Library — recent</span>
+            <Link
+              to="/history"
+              className="font-mono"
+              style={{
+                fontSize: 10,
+                color: 'var(--muted)',
+                letterSpacing: '0.08em',
+                textDecoration: 'none',
+              }}
+            >
+              ALL →
+            </Link>
+          </div>
+
           {history.data && history.data.length > 0 ? (
             <div className="flex flex-col">
               {history.data.map((job, i) => (
-                <div
+                <Link
                   key={job.id}
-                  className="py-3.5"
+                  to="/research/$jobId"
+                  params={{ jobId: job.id }}
+                  className="block transition-colors hover:bg-bg-3"
                   style={{
+                    padding: '14px 0',
                     borderBottom:
                       i < (history.data?.length ?? 0) - 1 ? '1px solid var(--line-soft)' : 'none',
+                    textDecoration: 'none',
+                    color: 'inherit',
                   }}
                 >
-                  <div className="serif text-[14px] leading-[1.3] mb-2">{job.topic}</div>
+                  <div
+                    className="serif"
+                    style={{
+                      fontSize: 14,
+                      lineHeight: 1.3,
+                      marginBottom: 8,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {job.topic}
+                  </div>
                   <div className="flex items-center justify-between">
                     <ConfidenceBar value={job.progress ?? 0} />
-                    <span className="font-mono text-[10px] text-muted">
+                    <span className="font-mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
                       {job.created_at
                         ? new Date(job.created_at).toLocaleDateString('en-GB', {
                             day: '2-digit',
@@ -372,12 +473,25 @@ export default function ResearchInputPage() {
                         : ''}
                     </span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
-            <div className="text-[13px] text-muted bg-bg p-3 border border-line-soft">
-              No briefs yet — your library is empty.
+            <div
+              className="serif"
+              style={{
+                marginTop: 8,
+                padding: 16,
+                background: 'var(--bg)',
+                border: '1px solid var(--line-soft)',
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'var(--fg-3)',
+                fontWeight: 300,
+                fontStyle: 'italic',
+              }}
+            >
+              No briefs yet. Your library fills as Scout, Scribe and Critic finish their first run.
             </div>
           )}
         </aside>
