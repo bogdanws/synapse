@@ -161,7 +161,8 @@ def _deny_url_fetcher(url: str, timeout: int = 10, ssl_cert_files: object = None
 def _weasyprint_sync(html: str) -> bytes:
     # Standalone function (not a lambda) so asyncio.to_thread can reference it
     # by name and profilers can attribute CPU time correctly.
-    result: bytes = weasyprint.HTML(string=html, url_fetcher=_deny_url_fetcher).write_pdf()
+    result = weasyprint.HTML(string=html, url_fetcher=_deny_url_fetcher).write_pdf()
+    assert result is not None  # only None when a target path is passed; we don't
     return result
 
 
