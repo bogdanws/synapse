@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { PhaseRail } from '../components/PhaseRail'
 import { PhaseShell } from '../components/PhaseShell'
 import { SourcePill } from '../components/SourcePill'
 import { Button } from '../components/ui/Button'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { cn } from '../components/ui/cn'
 import { useDerivedJobState } from '../hooks/useDerivedJobState'
 import { useJobStream } from '../hooks/useJobStream'
@@ -195,16 +195,15 @@ export default function JobProgressPage() {
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* Brief bar */}
-      <header
+      <AppNavbar
         className="flex items-center gap-3 sm:gap-5 px-4 sm:px-7 py-3 sm:py-3.5 border-b shrink-0"
         style={{ borderColor: 'var(--line)' }}
       >
-        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          <SynapseMark />
-          <span className="serif hidden sm:inline-block" style={{ fontSize: 16, fontWeight: 500 }}>
-            Synapse
-          </span>
-        </div>
+        <SynapseBrandLink
+          className="flex items-center gap-2 sm:gap-2.5 shrink-0"
+          labelClassName="serif hidden sm:inline-block"
+          labelStyle={{ fontSize: 16, fontWeight: 500 }}
+        />
 
         <span
           className="hidden sm:block w-px h-4 shrink-0"
@@ -239,7 +238,7 @@ export default function JobProgressPage() {
         <Button variant="ghost" size="sm" disabled className="hidden sm:inline-flex">
           Cancel
         </Button>
-      </header>
+      </AppNavbar>
 
       {/* Connection-lost banner — muted stripe, non-intrusive */}
       {(wsStatus === 'error' || wsStatus === 'closed') && !isTerminal && (

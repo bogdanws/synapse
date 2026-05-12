@@ -4,9 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { Button } from '../components/ui/Button'
 import { Select, type SelectOption } from '../components/ui/Select'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { AGENTS, AGENT_ORDER, type Agent } from '../components/ui/Agent'
 import { AgentDot } from '../components/ui/AgentDot'
 import { ConfidenceBar } from '../components/ConfidenceBar'
@@ -188,20 +188,16 @@ export default function ResearchInputPage() {
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* App chrome */}
-      <header
+      <AppNavbar
         className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8 shrink-0"
         style={{ borderBottom: '1px solid var(--line)' }}
       >
         <div className="flex items-center gap-4 sm:gap-7 min-w-0">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <SynapseMark size={28} />
-            <span
-              className="serif"
-              style={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}
-            >
-              Synapse
-            </span>
-          </div>
+          <SynapseBrandLink
+            className="flex items-center gap-2.5 shrink-0"
+            labelClassName="serif"
+            labelStyle={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}
+          />
           <nav className="flex gap-3 sm:gap-[18px]">
             <span className="label">New brief</span>
             <Link
@@ -235,7 +231,7 @@ export default function ResearchInputPage() {
             {me ? getInitials(me.email) : ''}
           </div>
         </div>
-      </header>
+      </AppNavbar>
 
       {/* Main */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] lg:overflow-hidden">

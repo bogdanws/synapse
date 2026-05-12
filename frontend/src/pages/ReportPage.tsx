@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { MarginPanel } from '../components/MarginPanel'
 import { ReportSection } from '../components/ReportSection'
 import { SourceRow } from '../components/SourceRow'
 import { Button } from '../components/ui/Button'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { useReport } from '../hooks/useReport'
 import { ApiError } from '../services/api'
 
@@ -89,17 +89,16 @@ export default function ReportPage() {
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* App chrome */}
-      <div
+      <AppNavbar
         className="report-nav"
         style={{ padding: '12px 28px', borderBottom: '1px solid var(--line)' }}
       >
         <div className="report-nav-meta">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <SynapseMark />
-            <span className="serif" style={{ fontSize: 16, fontWeight: 500 }}>
-              Synapse
-            </span>
-          </div>
+          <SynapseBrandLink
+            className="flex items-center gap-2.5 shrink-0"
+            labelClassName="serif"
+            labelStyle={{ fontSize: 16, fontWeight: 500 }}
+          />
           <span className="report-nav-rule" style={{ background: 'var(--line)' }} aria-hidden />
           <span className="micro report-nav-brief">
             Brief #{jobId.slice(0, 8).toUpperCase()} · Delivered {formatDate(deliveredAt)}
@@ -132,7 +131,7 @@ export default function ReportPage() {
             </Button>
           </Link>
         </div>
-      </div>
+      </AppNavbar>
 
       {/* Masthead — border stays full-width; content is bounded so the headline
           doesn't sprawl on ultrawide viewports. */}

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { SynapseMark } from '../components/ui/SynapseMark'
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { useLogin, useRegister } from '../hooks/useAuth'
 
 const registerSchema = z
@@ -116,23 +116,19 @@ export default function RegisterPage() {
       </svg>
 
       {/* Masthead */}
-      <div
+      <AppNavbar
         className="flex justify-between items-center px-4 sm:px-12 py-5 shrink-0 relative z-10"
         style={{ borderBottom: '1px solid var(--line)' }}
       >
-        <div className="flex items-center gap-3.5">
-          <SynapseMark size={28} />
-          <span
-            className="serif"
-            style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em' }}
-          >
-            Synapse
-          </span>
-        </div>
+        <SynapseBrandLink
+          className="flex items-center gap-3.5"
+          labelClassName="serif"
+          labelStyle={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em' }}
+        />
         <span className="micro" style={{ color: 'var(--muted)' }}>
           Private beta · sign up
         </span>
-      </div>
+      </AppNavbar>
 
       {/* Corner crosshairs — decorative, hidden on small screens */}
       {(

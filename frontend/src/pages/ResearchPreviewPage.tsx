@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { Button } from '../components/ui/Button'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { usePreviewResearch } from '../hooks/usePreviewResearch'
 import { useStartResearch } from '../hooks/useStartResearch'
 import { ALLOWED_MODELS } from '../constants/models'
@@ -269,7 +269,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
     >
       {/* Top chrome */}
-      <header
+      <AppNavbar
         style={{
           padding: '12px 28px',
           borderBottom: '1px solid var(--line)',
@@ -279,10 +279,12 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           gap: 14,
         }}
       >
-        <SynapseMark size={22} />
-        <span className="serif" style={{ fontSize: 16, fontWeight: 500 }}>
-          Synapse
-        </span>
+        <SynapseBrandLink
+          className="flex items-center gap-2.5 shrink-0"
+          labelClassName="serif"
+          labelStyle={{ fontSize: 16, fontWeight: 500 }}
+          markSize={22}
+        />
         <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
         <span className="micro" style={{ color: 'var(--muted)' }}>
           New brief
@@ -310,7 +312,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           <span className="pulse-dot" />
           <span className="label">Scout has a plan — review before launch</span>
         </div>
-      </header>
+      </AppNavbar>
 
       {/* Topic restatement */}
       <div
