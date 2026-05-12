@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field, HttpUrl, model_validator
 
 REQUIRED_MODEL_AGENTS = ("scout", "scribe", "critic")
 
-# Footnote refs of the form `[^sX]`. Used to derive `ReportSection.cited_source_ids` from prose. Definitions (`[^sX]: ...`) match the same pattern; deduplication below means the trailing colon variant is harmless.
-_FOOTNOTE_REF_RE = re.compile(r"\[\^(s\d+)\]")
+# Footnote refs of the form `[^sX]`, with `[sX]` accepted for model outputs that omit the caret. Used to derive `ReportSection.cited_source_ids` from prose. Definitions (`[^sX]: ...`) match the same pattern; deduplication below means the trailing colon variant is harmless.
+_FOOTNOTE_REF_RE = re.compile(r"\[\^?(s\d+)\]")
 
 
 class JobStatus(StrEnum):

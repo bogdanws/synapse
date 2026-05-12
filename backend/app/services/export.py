@@ -20,7 +20,7 @@ _SPAN_CLAIM_RE = re.compile(
     r"<span\b[^>]*\bdata-claim\s*=\s*['\"][^'\"]+['\"][^>]*>(.*?)</span>",
     re.DOTALL,
 )
-_FOOTNOTE_REF_RE = re.compile(r"\[\^(s\d+)\]")
+_FOOTNOTE_REF_RE = re.compile(r"\[\^?(s\d+)\]")
 _FLAGGED_VERDICTS = {Verdict.UNSUPPORTED, Verdict.CONTRADICTED}
 
 
@@ -306,7 +306,7 @@ def _decorate_claim_spans(html: str, claim_flags: list[ClaimFlag]) -> str:
 
 
 def _linkify_footnote_refs(body: str, source_url_map: dict[str, str]) -> str:
-    """Replace [^sN] markers with superscript PDF hyperlinks to the source URL.
+    """Replace [^sN] or [sN] markers with superscript PDF hyperlinks to the source URL.
 
     markdown-it-py does not process footnote syntax without a plugin, so refs
     survive as literal [^sN] text in the rendered HTML. WeasyPrint encodes
