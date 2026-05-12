@@ -6,7 +6,7 @@ Pydantic catches type errors for free. These validators enforce the cross-field 
   * Inside each section's `body_md`, every `<span data-claim="…">` uses the
     section's id as prefix and the claim suffix (`c1`, `c2`, …) is sequential
     starting at 1, with each claim id appearing exactly once.
-  * Every `[^sX]` footnote reference resolves to a `Source.id` declared on
+  * Every `[^sX]` or `[sX]` footnote reference resolves to a `Source.id` declared on
     the report — the only direction that catches genuine hallucination
     (referencing a source that does not exist) rather than redundant data
     the model could be asked to maintain.
@@ -32,8 +32,8 @@ _CLAIM_SPAN_RE = re.compile(
     r"<span\b[^>]*\bdata-claim\s*=\s*['\"]([^'\"]+)['\"][^>]*>",
     re.IGNORECASE,
 )
-# Footnote references like `[^s12]`. Markdown footnote definitions look the same followed by a colon (`[^s12]:`); we treat both as references for the purpose of "does this id appear in the body".
-_FOOTNOTE_REF_RE = re.compile(r"\[\^(s\d+)\]")
+# Footnote references like `[^s12]`; `[s12]` is accepted because models sometimes omit the caret. Markdown footnote definitions look the same followed by a colon (`[^s12]:`); we treat both as references for the purpose of "does this id appear in the body".
+_FOOTNOTE_REF_RE = re.compile(r"\[\^?(s\d+)\]")
 _SECTION_ID_RE = re.compile(r"^sec(\d+)$")
 _CLAIM_LOCAL_RE = re.compile(r"^c(\d+)$")
 

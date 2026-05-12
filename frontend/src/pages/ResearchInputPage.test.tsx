@@ -169,14 +169,14 @@ describe('ResearchInputPage', () => {
   it('fills topic when clicking an example question', async () => {
     renderPage()
 
-    const example = screen.getByText(/microplastics in human placenta/i)
+    const example = screen.getByText(/current state of evidence on GLP-1 agonists/i)
     await userEvent.click(example)
 
     const textarea = screen.getByPlaceholderText(
       /type your research topic here/i,
     ) as HTMLTextAreaElement
     expect(textarea.value).toBe(
-      'What does the latest evidence say about microplastics in human placenta?',
+      "What's the current state of evidence on GLP-1 agonists and cardiovascular outcomes in non-diabetic patients?",
     )
   })
 

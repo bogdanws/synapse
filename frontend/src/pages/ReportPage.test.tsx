@@ -65,8 +65,8 @@ const _VERIFIED_REPORT: VerifiedReport = {
       {
         id: 'sec2',
         heading: 'LP Dynamics',
-        body_md: 'U.S. and U.K. pension funds reduced commitments.',
-        cited_source_ids: [],
+        body_md: 'U.S. and U.K. pension funds reduced commitments.[s2]',
+        cited_source_ids: ['s2'],
       },
     ],
     sources: [
@@ -318,5 +318,16 @@ describe('ReportPage', () => {
 
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView
     vi.useRealTimers()
+  })
+
+  it('renders source markers without carets as clickable footnotes', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    expect(document.querySelector('a[href="#s2"]')).toBeInTheDocument()
   })
 })

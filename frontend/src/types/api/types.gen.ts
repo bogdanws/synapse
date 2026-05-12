@@ -382,6 +382,14 @@ export type UserCreate = {
      * Is Verified
      */
     is_verified?: boolean | null;
+    /**
+     * First Name
+     */
+    first_name: string;
+    /**
+     * Last Name
+     */
+    last_name: string;
 };
 
 /**
@@ -408,6 +416,14 @@ export type UserRead = {
      * Is Verified
      */
     is_verified?: boolean;
+    /**
+     * First Name
+     */
+    first_name: string;
+    /**
+     * Last Name
+     */
+    last_name: string;
 };
 
 /**
@@ -434,6 +450,14 @@ export type UserUpdate = {
      * Is Verified
      */
     is_verified?: boolean | null;
+    /**
+     * First Name
+     */
+    first_name?: string | null;
+    /**
+     * Last Name
+     */
+    last_name?: string | null;
 };
 
 /**

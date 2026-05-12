@@ -8,7 +8,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: loginUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      queryClient.removeQueries({ queryKey: ['auth', 'me'] })
     },
   })
 }

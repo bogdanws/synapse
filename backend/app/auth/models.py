@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Direct import: the `fastapi_users.db` re-export shim swallows ImportErrors and breaks under alembic's import order
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -20,6 +20,12 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     not supply it.
     """
 
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"

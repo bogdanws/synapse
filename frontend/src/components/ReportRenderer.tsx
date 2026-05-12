@@ -199,8 +199,8 @@ export function ReportRenderer({
     return map
   }, [sources])
 
-  // Scribe produces raw [^sX] syntax. Pre-process to wrap in <sup data-source="sX">
-  const bodyWithFootnotes = section.body_md.replace(/\[\^(s\d+)\]/g, (_match, id) => {
+  // Scribe should produce [^sX], but some models omit the caret. Normalize both forms before markdown parsing so they use the same interactive renderer.
+  const bodyWithFootnotes = section.body_md.replace(/\[\^?(s\d+)\]/g, (_match, id) => {
     const num = id.replace('s', '')
     return `<sup data-source="${id}">${num}</sup>`
   })

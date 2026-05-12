@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { PhaseRail } from '../components/PhaseRail'
 import { PhaseShell } from '../components/PhaseShell'
 import { SourcePill } from '../components/SourcePill'
 import { Button } from '../components/ui/Button'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { cn } from '../components/ui/cn'
 import { useDerivedJobState } from '../hooks/useDerivedJobState'
 import { useJobStream } from '../hooks/useJobStream'
@@ -182,29 +182,39 @@ export default function JobProgressPage() {
       ? 'Completed'
       : `In progress · ${formatElapsed(elapsedSeconds)} elapsed`
 
+  // Compact status label for narrow viewports: keep the timer, drop extra text.
+  const statusLabelShort = isFailed
+    ? 'Failed'
+    : currentPhase === 'done'
+      ? 'Completed'
+      : `In progress · ${formatElapsed(elapsedSeconds)}`
+
   return (
     <div
       className="flex flex-col min-h-screen"
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* Brief bar */}
-      <header
-        className="flex items-center gap-5 px-7 border-b border-line shrink-0"
-        style={{ padding: '14px 28px' }}
+      <AppNavbar
+        className="flex items-center gap-3 sm:gap-5 px-4 sm:px-7 py-3 sm:py-3.5 border-b shrink-0"
+        style={{ borderColor: 'var(--line)' }}
       >
-        <div className="flex items-center gap-2.5">
-          <SynapseMark />
-          <span className="serif" style={{ fontSize: 16, fontWeight: 500 }}>
-            Synapse
-          </span>
-        </div>
-
-        <span className="w-px h-4 block" style={{ background: 'var(--line)' }} aria-hidden />
-
-        <span className="micro">Brief</span>
+        <SynapseBrandLink
+          className="flex items-center gap-2 sm:gap-2.5 shrink-0"
+          labelClassName="serif hidden sm:inline-block"
+          labelStyle={{ fontSize: 16, fontWeight: 500 }}
+        />
 
         <span
-          className="serif flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+          className="hidden sm:block w-px h-4 shrink-0"
+          style={{ background: 'var(--line)' }}
+          aria-hidden
+        />
+
+        <span className="micro hidden md:inline">Brief</span>
+
+        <span
+          className="serif flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
           style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--fg-2)' }}
           title={topic ?? undefined}
         >
@@ -218,20 +228,22 @@ export default function JobProgressPage() {
           aria-label="job status"
         >
           {!isTerminal && wsStatus === 'open' && <span className="pulse-dot" aria-hidden />}
-          <span>{statusLabel}</span>
+          {/* Full label on md+, compact (no error reason / no "elapsed" word) on mobile. */}
+          <span className="hidden md:inline">{statusLabel}</span>
+          <span className="md:hidden">{statusLabelShort}</span>
         </div>
 
         {/* Cancel is a future capability; backend cancellation is not exposed yet. */}
         {/* TODO: wire up job cancellation endpoint */}
-        <Button variant="ghost" size="sm" disabled>
+        <Button variant="ghost" size="sm" disabled className="hidden sm:inline-flex">
           Cancel
         </Button>
-      </header>
+      </AppNavbar>
 
       {/* Connection-lost banner — muted stripe, non-intrusive */}
       {(wsStatus === 'error' || wsStatus === 'closed') && !isTerminal && (
         <div
-          className="px-7 py-2 text-center label"
+          className="px-4 sm:px-7 py-2 text-center label"
           style={{
             background: 'var(--bg-2)',
             color: 'var(--muted)',
@@ -254,8 +266,10 @@ export default function JobProgressPage() {
 
       {/* Body — scrollable phase cards */}
       <div
-        className={cn('flex-1 overflow-auto min-h-0 scrollbar')}
-        style={{ padding: '28px 32px 36px' }}
+        className={cn(
+          'flex-1 overflow-auto min-h-0 scrollbar',
+          'px-4 sm:px-7 lg:px-8 pt-6 sm:pt-7 pb-8 sm:pb-9',
+        )}
       >
         {/* Scout card */}
         <PhaseShell
@@ -266,55 +280,56 @@ export default function JobProgressPage() {
           status={scoutStatus}
           defaultOpen
         >
-          <div style={{ marginTop: 18 }}>
+          <div className="mt-4 sm:mt-[18px]">
             {subQuestions.length > 0 ? (
               <>
                 <div className="micro mb-3">
                   Scout fanned out — one parallel sub‑agent per question.
                 </div>
                 <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 0,
-                    borderTop: '1px solid var(--line)',
-                  }}
+                  className="grid grid-cols-1 md:grid-cols-2"
+                  style={{ borderTop: '1px solid var(--line)' }}
                 >
-                  {subQuestions.map((q, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '18px 22px',
-                        borderBottom: '1px solid var(--line-soft)',
-                        borderRight: i % 2 === 0 ? '1px solid var(--line-soft)' : 'none',
-                      }}
-                    >
-                      <div className="flex items-baseline gap-3 mb-2">
-                        <span
-                          className="font-mono shrink-0"
-                          style={{ fontSize: 10, color: 'var(--scout)' }}
-                        >
-                          S.{String(i + 1).padStart(2, '0')}
-                        </span>
-                        <span className="serif flex-1" style={{ fontSize: 14.5, lineHeight: 1.35 }}>
-                          {q}
-                        </span>
-                      </div>
-                      {sources.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2.5">
-                          {/* Sources are not linked to individual sub-questions by the API, so all
-                           * sources appear in the Scout card grouped by arrival order. */}
-                          {sources.slice(0, 6).map((src) => (
-                            <SourcePill
-                              key={src.id}
-                              title={src.title}
-                              credibility={src.credibility}
-                            />
-                          ))}
+                  {subQuestions.map((q, i) => {
+                    const isRightColumn = i % 2 === 1
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          'border-b border-[var(--line-soft)] px-4 py-4 sm:px-[22px] sm:py-[18px]',
+                          !isRightColumn && 'md:border-r md:border-r-[var(--line-soft)]',
+                        )}
+                      >
+                        <div className="flex items-baseline gap-3 mb-2">
+                          <span
+                            className="font-mono shrink-0"
+                            style={{ fontSize: 10, color: 'var(--scout)' }}
+                          >
+                            S.{String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span
+                            className="serif flex-1"
+                            style={{ fontSize: 14.5, lineHeight: 1.35 }}
+                          >
+                            {q}
+                          </span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {sources.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                            {/* Sources are not linked to individual sub-questions by the API, so all
+                             * sources appear in the Scout card grouped by arrival order. */}
+                            {sources.slice(0, 6).map((src) => (
+                              <SourcePill
+                                key={src.id}
+                                title={src.title}
+                                credibility={src.credibility}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </>
             ) : (
@@ -337,14 +352,12 @@ export default function JobProgressPage() {
           status={scribeStatus}
           defaultOpen={scribeStatus !== 'queue'}
         >
-          <div
-            style={{ marginTop: 18, display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 32 }}
-          >
+          <div className="mt-4 sm:mt-[18px] grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-7 lg:gap-8">
             {/* Left: outline */}
             <div>
               <div className="micro mb-3">Outline</div>
               {sections.length > 0 ? (
-                <ol style={{ paddingLeft: 0, margin: 0, listStyle: 'none' }}>
+                <ol className="list-none p-0 m-0">
                   {sections.map((sec, i) => {
                     // The last section that arrived is considered "active" while Scribe runs;
                     // once scribeComplete, all sections are "done".
@@ -357,11 +370,8 @@ export default function JobProgressPage() {
                     return (
                       <li
                         key={sec.id}
-                        className="flex items-center gap-2.5"
-                        style={{
-                          padding: '8px 0',
-                          borderTop: '1px solid var(--line-soft)',
-                        }}
+                        className="flex items-center gap-2.5 py-2"
+                        style={{ borderTop: '1px solid var(--line-soft)' }}
                       >
                         <span
                           className="font-mono shrink-0"
@@ -376,7 +386,7 @@ export default function JobProgressPage() {
                           )}
                           style={{
                             fontSize: 13.5,
-                            color: sectionStatus === 'active' ? 'var(--fg)' : 'var(--fg)',
+                            color: 'var(--fg)',
                             fontWeight: sectionStatus === 'active' ? 500 : 400,
                           }}
                         >
@@ -416,9 +426,9 @@ export default function JobProgressPage() {
                       : `Now writing · §${sections.length} — ${sections[sections.length - 1]?.heading}`}
                   </div>
                   <div
+                    className="px-5 sm:px-[22px] py-5"
                     style={{
                       border: '1px solid var(--line)',
-                      padding: '20px 22px',
                       background: 'var(--bg-2)',
                     }}
                   >
@@ -450,9 +460,8 @@ export default function JobProgressPage() {
         >
           {criticStatus === 'queue' ? (
             <div
+              className="mt-3.5 px-5 py-4"
               style={{
-                marginTop: 14,
-                padding: '16px 20px',
                 background: 'var(--bg-2)',
                 border: '1px dashed var(--line)',
               }}
@@ -473,26 +482,22 @@ export default function JobProgressPage() {
               </div>
             </div>
           ) : (
-            <div style={{ marginTop: 18 }}>
+            <div className="mt-4 sm:mt-[18px]">
               {claimFlags.length > 0 ? (
-                <ul style={{ paddingLeft: 0, margin: 0, listStyle: 'none' }}>
-                  {claimFlags.map((flag, i) => (
+                <ul className="list-none p-0 m-0">
+                  {claimFlags.map((flag) => (
                     <li
                       key={flag.claim_id}
-                      className="flex items-start gap-3"
-                      style={{
-                        padding: '10px 0',
-                        borderTop:
-                          i === 0 ? '1px solid var(--line-soft)' : '1px solid var(--line-soft)',
-                      }}
+                      className="flex flex-col sm:flex-row sm:items-start gap-1.5 sm:gap-3 py-2.5"
+                      style={{ borderTop: '1px solid var(--line-soft)' }}
                     >
                       <span
-                        className="font-mono shrink-0"
+                        className="font-mono shrink-0 sm:pt-0.5"
                         style={{
                           fontSize: 9,
                           letterSpacing: '0.1em',
                           color: verdictColor(flag.verdict),
-                          paddingTop: 2,
+                          minWidth: 88,
                         }}
                       >
                         {verdictLabel(flag.verdict)}
@@ -521,8 +526,11 @@ export default function JobProgressPage() {
 
       {/* Footer telemetry */}
       <footer
-        className="flex items-center gap-7 px-7 border-t border-line shrink-0"
-        style={{ padding: '10px 28px', background: 'var(--bg-2)' }}
+        className={cn(
+          'shrink-0 border-t px-4 sm:px-7 py-2.5 sm:py-[10px]',
+          'flex flex-wrap items-center gap-x-6 sm:gap-x-7 gap-y-2.5',
+        )}
+        style={{ background: 'var(--bg-2)', borderColor: 'var(--line)' }}
       >
         <TelemetryItem label="Sub‑questions" value={String(subQuestions.length)} />
         <TelemetryItem label="Sources read" value={String(sourceCount)} />
@@ -531,7 +539,7 @@ export default function JobProgressPage() {
           value={wordCount > 0 ? wordCount.toLocaleString() : '—'}
         />
         <TelemetryItem label="Claims audited" value={String(claimCount)} />
-        <div className="ml-auto flex gap-7">
+        <div className="flex gap-x-6 sm:gap-x-7 w-full lg:w-auto lg:ml-auto">
           <TelemetryItem
             label="Stage"
             value={

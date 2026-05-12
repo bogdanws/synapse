@@ -29,13 +29,17 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 
 import { authCookieLoginApiAuthLoginPost } from '../types/api'
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <LoginPage />
-    </QueryClientProvider>,
-  )
+function renderPage(
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <LoginPage />
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('LoginPage', () => {
@@ -99,6 +103,27 @@ describe('LoginPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
     await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/research/new' })
+    })
+  })
+
+  it('clears cached anonymous auth state before redirecting', async () => {
+    vi.mocked(authCookieLoginApiAuthLoginPost).mockResolvedValue({
+      data: {},
+      response: { ok: true, status: 204 } as Response,
+      request: {} as Request,
+    } as never)
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData(['auth', 'me'], null)
+    renderPage(queryClient)
+
+    await userEvent.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await userEvent.type(screen.getByLabelText(/password/i), 'password123')
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['auth', 'me'])).toBeUndefined()
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/research/new' })
     })
   })
