@@ -18,6 +18,12 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useNavigate: () => mockNavigate,
     useParams: () => ({ jobId: mockJobId }),
+    Link: ({
+      children,
+      ...props
+    }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => (
+      <a {...props}>{children}</a>
+    ),
   }
 })
 
