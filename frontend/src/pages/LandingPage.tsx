@@ -2,13 +2,13 @@ import { useNavigate } from '@tanstack/react-router'
 
 import { useMe } from '../hooks/useMe'
 
-import { AgentsSection } from './landing/AgentsSection'
-import { FeaturePillarsSection } from './landing/FeaturePillarsSection'
-import { FooterCtaSection } from './landing/FooterCtaSection'
-import { LandingFooter } from './landing/LandingFooter'
-import { LandingHeader } from './landing/LandingHeader'
-import { LandingHero } from './landing/LandingHero'
-import { MethodSection } from './landing/MethodSection'
+import { AgentsSection } from '../components/landing/AgentsSection'
+import { FeaturePillarsSection } from '../components/landing/FeaturePillarsSection'
+import { FooterCtaSection } from '../components/landing/FooterCtaSection'
+import { LandingFooter } from '../components/landing/LandingFooter'
+import { LandingHeader } from '../components/landing/LandingHeader'
+import { LandingHero } from '../components/landing/LandingHero'
+import { MethodSection } from '../components/landing/MethodSection'
 
 export default function LandingPage() {
   const user = useMe()
