@@ -12,7 +12,7 @@ export function AgentsSection() {
           <h2
             className="serif font-normal"
             style={{
-              fontSize: 'clamp(40px, 7vw, 84px)',
+              fontSize: 'clamp(2.5rem, 7vw, 5.25rem)',
               letterSpacing: '-0.035em',
               lineHeight: 0.95,
               margin: 0,
@@ -40,7 +40,7 @@ export function AgentsSection() {
                 className="serif font-light leading-none"
                 style={{
                   color: `var(--${a.key})`,
-                  fontSize: 'clamp(64px, 6vw, 96px)',
+                  fontSize: 'clamp(4rem, 6vw, 6rem)',
                   letterSpacing: '-0.05em',
                 }}
               >
@@ -49,7 +49,7 @@ export function AgentsSection() {
               <span
                 aria-hidden
                 className={`agent-dot ${a.key} mt-2`}
-                style={{ width: 40, height: 40, fontSize: 17 }}
+                style={{ width: '2.5rem', height: '2.5rem', fontSize: '1.0625rem' }}
               >
                 {a.name[0]}
               </span>
@@ -59,7 +59,7 @@ export function AgentsSection() {
               <h3
                 className="serif font-normal"
                 style={{
-                  fontSize: 'clamp(36px, 3.6vw, 52px)',
+                  fontSize: 'clamp(2.25rem, 3.6vw, 3.25rem)',
                   letterSpacing: '-0.035em',
                   lineHeight: 0.95,
                   margin: 0,
@@ -77,7 +77,7 @@ export function AgentsSection() {
               />
             </div>
 
-            <p className="serif text-base font-light leading-relaxed text-fg-2 lg:text-[17px]">
+            <p className="serif text-base font-light leading-relaxed text-fg-2 lg:text-base">
               {a.brief}
             </p>
 
@@ -87,7 +87,7 @@ export function AgentsSection() {
                 {a.ops.map((op, idx) => (
                   <li
                     key={op}
-                    className="font-mono grid grid-cols-[28px_1fr] gap-3 text-[11px] leading-snug text-fg-2"
+                    className="font-mono grid grid-cols-[1.75rem_1fr] gap-3 text-xs leading-snug text-fg-2"
                   >
                     <span className="tabular-nums text-fg-3">
                       {String(idx + 1).padStart(2, '0')}

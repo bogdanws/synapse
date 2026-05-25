@@ -153,22 +153,20 @@ export function AgentPipelineHero() {
             }}
           >
             <span
-              className="font-mono text-[12px] leading-[1.5]"
+              className="font-mono text-sm leading-[1.5]"
               style={{ color: 'var(--critic)' }}
               aria-hidden
             >
               ◦
             </span>
-            <span className="serif text-[12.5px] italic leading-[1.55] text-fg-2">
-              {run.criticNote}
-            </span>
+            <span className="serif text-sm italic leading-[1.55] text-fg-2">{run.criticNote}</span>
           </div>
           <ConfidenceBar value={run.confidence} fired={confidenceFired} reduced={reduced} />
         </Block>
       </div>
 
       <div className="flex items-start gap-3.5">
-        <div className="serif text-[13px] font-light leading-relaxed text-fg-2">
+        <div className="serif text-sm font-light leading-relaxed text-fg-2">
           A question travels <b>Scout → Scribe → Critic</b>, and comes back as a report you can
           defend.
         </div>
@@ -187,10 +185,10 @@ function QueryRow({
   reduced: boolean
 }) {
   return (
-    <div className="border-b border-line px-4 py-3 sm:px-[18px]">
+    <div className="border-b border-line px-4 py-3 sm:px-5">
       <div className="micro mb-1.5 text-muted">Query</div>
       <div
-        className="serif text-[15px] italic leading-snug text-fg sm:text-[16px]"
+        className="serif text-sm italic leading-snug text-fg sm:text-base"
         style={{
           opacity: progress,
           transition: reduced ? 'none' : 'opacity 400ms ease-out',
@@ -219,7 +217,7 @@ function Block({
 }) {
   return (
     <div
-      className={`px-4 py-3.5 sm:px-[18px] ${last ? '' : 'border-b border-line'}`}
+      className={`px-4 py-3.5 sm:px-5 ${last ? '' : 'border-b border-line'}`}
       style={{
         background: active ? `var(--${agent}-soft)` : 'transparent',
         transition: 'background 480ms ease-out',
@@ -237,11 +235,11 @@ function Block({
         >
           {label}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{sub}</span>
+        <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted">{sub}</span>
         {active && (
           <span className="ml-auto flex items-center gap-1.5" style={{ color: `var(--${agent})` }}>
             <span className="pulse-dot" aria-hidden />
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em]">working</span>
+            <span className="font-mono text-xs uppercase tracking-[0.14em]">working</span>
           </span>
         )}
       </div>
@@ -272,9 +270,9 @@ function SourceLine({
         transition: reduced ? 'none' : 'opacity 320ms ease-out, transform 320ms ease-out',
       }}
     >
-      <span className="font-mono text-[10px] text-muted">[{num}]</span>
-      <span className="serif min-w-0 flex-1 truncate text-[12.5px] text-fg">{title}</span>
-      <span className="font-mono text-[10px] text-fg-2">{credibility}%</span>
+      <span className="font-mono text-xs text-muted">[{num}]</span>
+      <span className="serif min-w-0 flex-1 truncate text-sm text-fg">{title}</span>
+      <span className="font-mono text-xs text-fg-2">{credibility}%</span>
     </div>
   )
 }
@@ -344,11 +342,7 @@ function DraftView({
   })
   flushGroup()
 
-  return (
-    <p className="serif mt-3 text-[13px] font-light leading-[1.7] text-fg sm:text-[13.5px]">
-      {nodes}
-    </p>
-  )
+  return <p className="serif mt-3 text-sm font-light leading-[1.7] text-fg sm:text-sm">{nodes}</p>
 }
 
 function needsLeadingSpace(tok: DraftToken, i: number): boolean {
@@ -369,7 +363,7 @@ function renderToken(tok: DraftToken, idx: number, visible: boolean): ReactNode 
     return (
       <sup
         key={idx}
-        className="font-mono text-[9px] text-muted"
+        className="font-mono text-xs text-muted"
         style={{ ...baseStyle, letterSpacing: '0.04em', marginLeft: '1px' }}
       >
         [{tok.n}]
@@ -400,7 +394,7 @@ function ConfidenceBar({
       <div className="mb-1.5 flex items-baseline justify-between">
         <span className="micro text-muted">Confidence</span>
         <span
-          className="font-mono text-[11px] text-fg"
+          className="font-mono text-xs text-fg"
           style={{
             transition: reduced ? 'none' : 'color 220ms ease-out',
             color: fired ? 'var(--fg)' : 'var(--muted)',

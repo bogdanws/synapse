@@ -1,3 +1,5 @@
+import { Button } from '../ui/Button'
+
 import type { FooterCtaSectionProps } from './landing-types'
 
 export function FooterCtaSection({ onSubmit }: FooterCtaSectionProps) {
@@ -7,7 +9,7 @@ export function FooterCtaSection({ onSubmit }: FooterCtaSectionProps) {
         <h2
           className="serif m-0 font-light"
           style={{
-            fontSize: 'clamp(40px, 8vw, 96px)',
+            fontSize: 'clamp(2.5rem, 8vw, 6rem)',
             lineHeight: 0.95,
             letterSpacing: '-0.04em',
           }}
@@ -36,12 +38,9 @@ export function FooterCtaSection({ onSubmit }: FooterCtaSectionProps) {
               aria-label="Email"
               className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 font-sans text-sm text-inherit outline-none placeholder:text-current placeholder:opacity-60"
             />
-            <button
-              type="submit"
-              className="shrink-0 cursor-pointer bg-bg px-4 py-2.5 font-sans text-[13px] text-fg sm:px-[18px]"
-            >
+            <Button type="submit" size="sm" className="shrink-0 bg-bg text-fg sm:px-5">
               Sign up
-            </button>
+            </Button>
           </form>
         </div>
       </div>

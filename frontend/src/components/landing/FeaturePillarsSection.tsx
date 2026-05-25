@@ -33,7 +33,7 @@ export function FeaturePillarsSection() {
           <h2
             className="serif font-normal"
             style={{
-              fontSize: 'clamp(40px, 7vw, 84px)',
+              fontSize: 'clamp(2.5rem, 7vw, 5.25rem)',
               letterSpacing: '-0.035em',
               lineHeight: 0.95,
               margin: 0,
@@ -59,7 +59,7 @@ export function FeaturePillarsSection() {
             <span
               className="serif font-light leading-none text-fg-3"
               style={{
-                fontSize: 'clamp(64px, 6vw, 96px)',
+                fontSize: 'clamp(4rem, 6vw, 6rem)',
                 letterSpacing: '-0.05em',
               }}
             >
@@ -70,7 +70,7 @@ export function FeaturePillarsSection() {
               <h3
                 className="serif font-normal"
                 style={{
-                  fontSize: 'clamp(28px, 2.8vw, 38px)',
+                  fontSize: 'clamp(1.75rem, 2.8vw, 2.375rem)',
                   letterSpacing: '-0.03em',
                   lineHeight: 1,
                   margin: 0,
@@ -83,7 +83,7 @@ export function FeaturePillarsSection() {
               </div>
             </div>
 
-            <p className="serif text-base font-light leading-relaxed text-fg-2 lg:text-[17px]">
+            <p className="serif text-base font-light leading-relaxed text-fg-2 lg:text-base">
               {f.body}
             </p>
           </article>

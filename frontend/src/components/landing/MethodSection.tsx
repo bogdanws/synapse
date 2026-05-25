@@ -8,7 +8,7 @@ import { METHOD_STEPS } from './landing-content'
  * the steps stack as a vertical sequence.
  */
 
-const RAIL_OFFSET = '44px'
+const RAIL_OFFSET = '2.75rem'
 
 export function MethodSection() {
   return (
@@ -22,7 +22,7 @@ export function MethodSection() {
           <h2
             className="serif font-normal"
             style={{
-              fontSize: 'clamp(40px, 7vw, 84px)',
+              fontSize: 'clamp(2.5rem, 7vw, 5.25rem)',
               letterSpacing: '-0.035em',
               lineHeight: 0.95,
               margin: 0,
@@ -51,7 +51,7 @@ export function MethodSection() {
             const accent = s.who ? `var(--${s.who})` : 'var(--fg)'
             return (
               <li key={s.n} className="flex flex-col">
-                <div className="micro" style={{ height: 14 }}>
+                <div className="micro" style={{ height: '0.875rem' }}>
                   {s.n}
                 </div>
 
@@ -66,7 +66,7 @@ export function MethodSection() {
                 <h3
                   className="serif font-normal"
                   style={{
-                    fontSize: 'clamp(22px, 1.8vw, 26px)',
+                    fontSize: 'clamp(1.375rem, 1.8vw, 1.625rem)',
                     letterSpacing: '-0.025em',
                     lineHeight: 1.05,
                     margin: 0,
@@ -81,9 +81,7 @@ export function MethodSection() {
                   </div>
                 )}
 
-                <p className="serif mt-4 text-[15px] font-light leading-relaxed text-fg-2">
-                  {s.body}
-                </p>
+                <p className="serif mt-4 text-sm font-light leading-relaxed text-fg-2">{s.body}</p>
               </li>
             )
           })}

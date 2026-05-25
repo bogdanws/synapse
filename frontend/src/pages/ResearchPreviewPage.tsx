@@ -32,20 +32,23 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
     <li
       style={{
         display: 'grid',
-        gridTemplateColumns: '32px 1fr auto',
-        gap: 16,
+        gridTemplateColumns: '2rem 1fr auto',
+        gap: '1rem',
         alignItems: 'center',
-        padding: '16px 0',
+        padding: '1rem 0',
         borderBottom: '1px solid var(--line-soft)',
         opacity: isDropped ? 0.45 : 1,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         {/* Drag handle is visual only for v1; DnD reordering is a future enhancement */}
-        <span className="mono" style={{ fontSize: 10, color: 'var(--muted)', cursor: 'grab' }}>
+        <span
+          className="mono"
+          style={{ fontSize: '0.625rem', color: 'var(--muted)', cursor: 'grab' }}
+        >
           ⋮⋮
         </span>
-        <span className="mono" style={{ fontSize: 11, color: 'var(--scout)' }}>
+        <span className="mono" style={{ fontSize: '0.6875rem', color: 'var(--scout)' }}>
           S.{String(idx + 1).padStart(2, '0')}
         </span>
       </div>
@@ -53,7 +56,7 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
         <div
           className="serif"
           style={{
-            fontSize: 17,
+            fontSize: '1.0625rem',
             lineHeight: 1.4,
             fontWeight: 400,
             textDecoration: isDropped ? 'line-through' : 'none',
@@ -62,26 +65,26 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
           {question}
         </div>
         {isDropped && (
-          <div style={{ marginTop: 6 }}>
+          <div style={{ marginTop: '0.375rem' }}>
             <span
               className="mono"
-              style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}
+              style={{ fontSize: '0.625rem', color: 'var(--muted)', letterSpacing: '0.12em' }}
             >
               DROPPED
             </span>
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: '0.375rem' }}>
         {/* Edit is deferred for now */}
         <button
           disabled
           style={{
             border: '1px solid var(--line)',
             background: 'transparent',
-            padding: '4px 10px',
+            padding: '0.25rem 0.625rem',
             fontFamily: 'var(--mono)',
-            fontSize: 10,
+            fontSize: '0.625rem',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
             color: 'var(--fg-2)',
@@ -97,9 +100,9 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
             style={{
               border: '1px solid var(--line)',
               background: 'transparent',
-              padding: '4px 10px',
+              padding: '0.25rem 0.625rem',
               fontFamily: 'var(--mono)',
-              fontSize: 10,
+              fontSize: '0.625rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'var(--fg-2)',
@@ -114,9 +117,9 @@ function SubQRow({ idx, question, isDropped, onDrop, onRestore }: SubQRowProps) 
             style={{
               border: '1px solid var(--line)',
               background: 'transparent',
-              padding: '4px 10px',
+              padding: '0.25rem 0.625rem',
               fontFamily: 'var(--mono)',
-              fontSize: 10,
+              fontSize: '0.625rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: 'var(--fg-2)',
@@ -140,18 +143,28 @@ interface ParamProps {
 
 function Param({ label, value, hint, last }: ParamProps) {
   return (
-    <div style={{ padding: '10px 0', borderBottom: last ? 'none' : '1px solid var(--line-soft)' }}>
-      <div className="micro" style={{ fontSize: 9 }}>
+    <div
+      style={{ padding: '0.625rem 0', borderBottom: last ? 'none' : '1px solid var(--line-soft)' }}
+    >
+      <div className="micro" style={{ fontSize: '0.5625rem' }}>
         {label}
       </div>
       <div
         className="serif"
-        style={{ fontSize: 14, fontWeight: 400, marginTop: 3, letterSpacing: '-0.005em' }}
+        style={{
+          fontSize: '0.875rem',
+          fontWeight: 400,
+          marginTop: '0.1875rem',
+          letterSpacing: '-0.005em',
+        }}
       >
         {value}
       </div>
       {hint && (
-        <div className="mono" style={{ fontSize: 9, color: 'var(--muted)', marginTop: 3 }}>
+        <div
+          className="mono"
+          style={{ fontSize: '0.5625rem', color: 'var(--muted)', marginTop: '0.1875rem' }}
+        >
           {hint}
         </div>
       )}
@@ -273,24 +286,30 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
         <SynapseBrandLink
           className="flex items-center gap-2.5 shrink-0"
           labelClassName="serif"
-          labelStyle={{ fontSize: 16, fontWeight: 500 }}
+          labelStyle={{ fontSize: '1rem', fontWeight: 500 }}
           markSize={22}
         />
-        <span style={{ width: 1, height: 16, background: 'var(--line)' }} />
+        <span style={{ width: 1, height: '1rem', background: 'var(--line)' }} />
         <span className="micro" style={{ color: 'var(--muted)' }}>
           New brief
         </span>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+        <span className="mono" style={{ fontSize: '0.625rem', color: 'var(--muted)' }}>
           ›
         </span>
         <span className="micro">Plan</span>
-        <span className="mono hidden sm:inline" style={{ fontSize: 10, color: 'var(--muted)' }}>
+        <span
+          className="mono hidden sm:inline"
+          style={{ fontSize: '0.625rem', color: 'var(--muted)' }}
+        >
           ›
         </span>
         <span className="micro hidden sm:inline" style={{ color: 'var(--muted)' }}>
           Run
         </span>
-        <span className="mono hidden sm:inline" style={{ fontSize: 10, color: 'var(--muted)' }}>
+        <span
+          className="mono hidden sm:inline"
+          style={{ fontSize: '0.625rem', color: 'var(--muted)' }}
+        >
           ›
         </span>
         <span className="micro hidden sm:inline" style={{ color: 'var(--muted)' }}>
@@ -298,7 +317,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
         </span>
         <div
           className="sm:ml-auto"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--scout)' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--scout)' }}
         >
           <span className="pulse-dot" />
           <span className="label">Scout has a plan — review before launch</span>
@@ -308,19 +327,23 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
       {/* Topic restatement */}
       <div
         className="px-5 sm:px-10 lg:px-20"
-        style={{ paddingTop: 32, paddingBottom: 20, borderBottom: '1px solid var(--line)' }}
+        style={{
+          paddingTop: '2rem',
+          paddingBottom: '1.25rem',
+          borderBottom: '1px solid var(--line)',
+        }}
       >
-        <div className="micro" style={{ marginBottom: 10 }}>
+        <div className="micro" style={{ marginBottom: '0.625rem' }}>
           Your topic
         </div>
         <div
           className="serif"
           style={{
-            fontSize: 32,
+            fontSize: '2rem',
             lineHeight: 1.2,
             fontWeight: 300,
             letterSpacing: '-0.02em',
-            maxWidth: 920,
+            maxWidth: '57.5rem',
           }}
         >
           &ldquo;{formData.topic}&rdquo;
@@ -329,18 +352,18 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
 
       {/* Plan body */}
       <div
-        className="px-5 sm:px-10 lg:px-20 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-10 lg:gap-14"
-        style={{ paddingTop: 36, paddingBottom: 36, flex: 1 }}
+        className="px-5 sm:px-10 lg:px-20 grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-10 lg:gap-14"
+        style={{ paddingTop: '2.25rem', paddingBottom: '2.25rem', flex: 1 }}
       >
         {/* Left: sub-questions */}
         <div>
           <div
             className="flex flex-wrap items-baseline justify-between gap-y-3"
-            style={{ marginBottom: 18 }}
+            style={{ marginBottom: '1.125rem' }}
           >
             <h2
               className="serif"
-              style={{ fontSize: 32, fontWeight: 400, letterSpacing: '-0.02em', margin: 0 }}
+              style={{ fontSize: '2rem', fontWeight: 400, letterSpacing: '-0.02em', margin: 0 }}
             >
               Scout proposes{' '}
               <em>
@@ -348,7 +371,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
               </em>
               .
             </h2>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
               {/* Add question is deferred for now */}
               <Button variant="ghost" size="sm" disabled>
                 + Add question
@@ -367,11 +390,11 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           <div
             className="serif"
             style={{
-              fontSize: 14.5,
+              fontSize: '0.90625rem',
               lineHeight: 1.55,
               color: 'var(--fg-2)',
-              maxWidth: 720,
-              marginBottom: 28,
+              maxWidth: '45rem',
+              marginBottom: '1.75rem',
               fontWeight: 300,
               fontStyle: 'italic',
             }}
@@ -403,12 +426,12 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           className="border-t pt-7 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-7"
           style={{ borderColor: 'var(--line)' }}
         >
-          <div className="micro" style={{ marginBottom: 14 }}>
+          <div className="micro" style={{ marginBottom: '0.875rem' }}>
             Run parameters
           </div>
           <Param label="Depth" value={DEPTH_LABELS[formData.depth] ?? formData.depth} />
-          <div style={{ padding: '10px 0' }}>
-            <div className="micro" style={{ fontSize: 9, marginBottom: 8 }}>
+          <div style={{ padding: '0.625rem 0' }}>
+            <div className="micro" style={{ fontSize: '0.5625rem', marginBottom: '0.5rem' }}>
               Models
             </div>
             {Object.entries(formData.models).map(([agent, modelId]) => (
@@ -417,17 +440,21 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
-                  gap: 12,
-                  marginBottom: 5,
+                  gap: '0.75rem',
+                  marginBottom: '0.3125rem',
                 }}
               >
                 <span
                   className="mono"
-                  style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--muted)',
+                    textTransform: 'capitalize',
+                  }}
                 >
                   {agent}
                 </span>
-                <span className="mono" style={{ fontSize: 12 }}>
+                <span className="mono" style={{ fontSize: '0.75rem' }}>
                   {modelLabel(modelId)}
                 </span>
               </div>
@@ -437,22 +464,30 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           {/* TODO: compute estimate from actual depth and question count once the backend exposes timing data */}
           <div
             style={{
-              marginTop: 24,
-              padding: '14px',
+              marginTop: '1.5rem',
+              padding: '0.875rem',
               background: 'var(--bg-2)',
               border: '1px solid var(--line)',
             }}
           >
-            <div className="micro" style={{ marginBottom: 6 }}>
+            <div className="micro" style={{ marginBottom: '0.375rem' }}>
               Estimate
             </div>
             <div
               className="serif"
-              style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-0.02em', lineHeight: 1.05 }}
+              style={{
+                fontSize: '1.75rem',
+                fontWeight: 300,
+                letterSpacing: '-0.02em',
+                lineHeight: 1.05,
+              }}
             >
               ~ 4 min
             </div>
-            <div className="mono" style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>
+            <div
+              className="mono"
+              style={{ fontSize: '0.625rem', color: 'var(--muted)', marginTop: '0.375rem' }}
+            >
               ~ 30–60 sources reviewed · ~80 claims to audit
             </div>
           </div>
@@ -463,8 +498,8 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
       <footer
         className="px-5 sm:px-10 lg:px-20 flex flex-wrap items-center gap-5"
         style={{
-          paddingTop: 20,
-          paddingBottom: 20,
+          paddingTop: '1.25rem',
+          paddingBottom: '1.25rem',
           borderTop: '1px solid var(--fg)',
           background: 'var(--bg-2)',
         }}
@@ -474,7 +509,7 @@ function PreviewContent({ initialState }: { initialState: PreviewState }) {
           selected · {droppedCount} dropped
         </span>
         {launchError && (
-          <span className="text-[12px] text-critic" role="alert">
+          <span className="text-sm text-critic" role="alert">
             {launchError}
           </span>
         )}

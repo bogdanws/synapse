@@ -105,7 +105,6 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/markdown`
             }}
@@ -115,7 +114,6 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/pdf`
             }}
@@ -123,9 +121,7 @@ export default function ReportPage() {
             Export · PDF
           </Button>
           <Link to="/research/$jobId/follow-up" params={{ jobId }}>
-            <Button size="sm" style={{ padding: '6px 12px', fontSize: 11 }}>
-              Ask follow-up →
-            </Button>
+            <Button size="sm">Ask follow-up →</Button>
           </Link>
         </div>
       </AppNavbar>

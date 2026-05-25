@@ -11,7 +11,7 @@ export function LandingHeader({ ctaText, onCtaClick }: LandingCtaProps) {
     >
       <SynapseBrandLink
         className="flex min-w-0 items-center gap-3 sm:gap-3.5"
-        labelClassName="serif text-lg font-medium tracking-tight sm:text-[22px]"
+        labelClassName="serif text-lg font-medium tracking-tight sm:text-xl"
       />
       <nav className="flex items-center gap-4 sm:gap-6 lg:gap-8">
         <Button size="sm" onClick={onCtaClick}>

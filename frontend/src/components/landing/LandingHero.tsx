@@ -22,12 +22,12 @@ export function LandingHero({ ctaText, onCtaClick, onSampleClick }: LandingHeroP
 
   return (
     <section className="flex flex-1 flex-col justify-center border-b border-line px-6 py-14 sm:px-10 sm:py-16 lg:px-14 lg:py-20">
-      <div className="grid gap-10 lg:grid-cols-[1fr_420px] lg:gap-14 xl:grid-cols-[1fr_480px]">
+      <div className="grid gap-10 lg:grid-cols-[1fr_26rem] lg:gap-14 xl:grid-cols-[1fr_30rem]">
         <div className="min-w-0">
           <h1
             className="serif font-normal tracking-tight"
             style={{
-              fontSize: 'clamp(44px, 11vw, 124px)',
+              fontSize: 'clamp(2.75rem, 11vw, 7.75rem)',
               lineHeight: 0.92,
               letterSpacing: '-0.04em',
               textWrap: 'balance',
@@ -40,7 +40,7 @@ export function LandingHero({ ctaText, onCtaClick, onSampleClick }: LandingHeroP
             <br />
             itself.
           </h1>
-          <p className="hero-lede serif mt-8 max-w-[580px] text-lg font-light leading-snug text-fg-2 sm:mt-9 sm:text-xl lg:text-[22px]">
+          <p className="hero-lede serif mt-8 max-w-xl text-lg font-light leading-snug text-fg-2 sm:mt-9 sm:text-xl lg:text-xl">
             {reduced || !fontsReady
               ? LEDE
               : words.map((word, i) => (

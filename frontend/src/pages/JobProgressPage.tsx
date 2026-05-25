@@ -199,7 +199,7 @@ export default function JobProgressPage() {
         <SynapseBrandLink
           className="flex items-center gap-2 sm:gap-2.5 shrink-0"
           labelClassName="serif hidden sm:inline-block"
-          labelStyle={{ fontSize: 16, fontWeight: 500 }}
+          labelStyle={{ fontSize: '1rem', fontWeight: 500 }}
         />
 
         <span
@@ -212,7 +212,7 @@ export default function JobProgressPage() {
 
         <span
           className="serif flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-          style={{ fontSize: 14, fontStyle: 'italic', color: 'var(--fg-2)' }}
+          style={{ fontSize: '0.875rem', fontStyle: 'italic', color: 'var(--fg-2)' }}
           title={topic ?? undefined}
         >
           {topic ? `"${topic}"` : 'Loading…'}
@@ -277,7 +277,7 @@ export default function JobProgressPage() {
           status={scoutStatus}
           defaultOpen
         >
-          <div className="mt-4 sm:mt-[18px]">
+          <div className="mt-4 sm:mt-5">
             {subQuestions.length > 0 ? (
               <>
                 <div className="micro mb-3">
@@ -293,20 +293,20 @@ export default function JobProgressPage() {
                       <div
                         key={i}
                         className={cn(
-                          'border-b border-[var(--line-soft)] px-4 py-4 sm:px-[22px] sm:py-[18px]',
+                          'border-b border-[var(--line-soft)] px-4 py-4 sm:px-6 sm:py-5',
                           !isRightColumn && 'md:border-r md:border-r-[var(--line-soft)]',
                         )}
                       >
                         <div className="flex items-baseline gap-3 mb-2">
                           <span
                             className="font-mono shrink-0"
-                            style={{ fontSize: 10, color: 'var(--scout)' }}
+                            style={{ fontSize: '0.625rem', color: 'var(--scout)' }}
                           >
                             S.{String(i + 1).padStart(2, '0')}
                           </span>
                           <span
                             className="serif flex-1"
-                            style={{ fontSize: 14.5, lineHeight: 1.35 }}
+                            style={{ fontSize: '0.90625rem', lineHeight: 1.35 }}
                           >
                             {q}
                           </span>
@@ -349,7 +349,7 @@ export default function JobProgressPage() {
           status={scribeStatus}
           defaultOpen={scribeStatus !== 'queue'}
         >
-          <div className="mt-4 sm:mt-[18px] grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-7 lg:gap-8">
+          <div className="mt-4 sm:mt-5 grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-7 lg:gap-8">
             {/* Left: outline */}
             <div>
               <div className="micro mb-3">Outline</div>
@@ -372,7 +372,7 @@ export default function JobProgressPage() {
                       >
                         <span
                           className="font-mono shrink-0"
-                          style={{ fontSize: 10, color: 'var(--muted)', width: 24 }}
+                          style={{ fontSize: '0.625rem', color: 'var(--muted)', width: '1.5rem' }}
                         >
                           §{i + 1}
                         </span>
@@ -382,7 +382,7 @@ export default function JobProgressPage() {
                             sectionStatus === 'done' && !isLastAndActive && 'line-through',
                           )}
                           style={{
-                            fontSize: 13.5,
+                            fontSize: '0.84375rem',
                             color: 'var(--fg)',
                             fontWeight: sectionStatus === 'active' ? 500 : 400,
                           }}
@@ -392,7 +392,7 @@ export default function JobProgressPage() {
                         <span
                           className="font-mono"
                           style={{
-                            fontSize: 9,
+                            fontSize: '0.5625rem',
                             letterSpacing: '0.12em',
                             color: sectionStatus === 'active' ? 'var(--scribe)' : 'var(--muted)',
                           }}
@@ -423,7 +423,7 @@ export default function JobProgressPage() {
                       : `Now writing · §${sections.length} — ${sections[sections.length - 1]?.heading}`}
                   </div>
                   <div
-                    className="px-5 sm:px-[22px] py-5"
+                    className="px-5 sm:px-6 py-5"
                     style={{
                       border: '1px solid var(--line)',
                       background: 'var(--bg-2)',
@@ -431,7 +431,7 @@ export default function JobProgressPage() {
                   >
                     <div
                       className="serif"
-                      style={{ fontSize: 14, lineHeight: 1.6, fontWeight: 300 }}
+                      style={{ fontSize: '0.875rem', lineHeight: 1.6, fontWeight: 300 }}
                     >
                       {sections[sections.length - 1]?.body_md}
                     </div>
@@ -466,7 +466,7 @@ export default function JobProgressPage() {
               <div
                 className="serif"
                 style={{
-                  fontSize: 13,
+                  fontSize: '0.8125rem',
                   lineHeight: 1.6,
                   color: 'var(--fg-2)',
                   fontWeight: 300,
@@ -479,7 +479,7 @@ export default function JobProgressPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-4 sm:mt-[18px]">
+            <div className="mt-4 sm:mt-5">
               {claimFlags.length > 0 ? (
                 <ul className="list-none p-0 m-0">
                   {claimFlags.map((flag) => (
@@ -491,17 +491,17 @@ export default function JobProgressPage() {
                       <span
                         className="font-mono shrink-0 sm:pt-0.5"
                         style={{
-                          fontSize: 9,
+                          fontSize: '0.5625rem',
                           letterSpacing: '0.1em',
                           color: verdictColor(flag.verdict),
-                          minWidth: 88,
+                          minWidth: '5.5rem',
                         }}
                       >
                         {verdictLabel(flag.verdict)}
                       </span>
                       <span
                         className="serif flex-1"
-                        style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--fg-2)' }}
+                        style={{ fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--fg-2)' }}
                       >
                         {flag.rationale}
                       </span>
@@ -524,7 +524,7 @@ export default function JobProgressPage() {
       {/* Footer telemetry */}
       <footer
         className={cn(
-          'shrink-0 border-t px-4 sm:px-7 py-2.5 sm:py-[10px]',
+          'shrink-0 border-t px-4 sm:px-7 py-2.5 sm:py-2.5',
           'flex flex-wrap items-center gap-x-6 sm:gap-x-7 gap-y-2.5',
         )}
         style={{ background: 'var(--bg-2)', borderColor: 'var(--line)' }}
@@ -564,10 +564,10 @@ export default function JobProgressPage() {
 function TelemetryItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="micro" style={{ fontSize: 9 }}>
+      <div className="micro" style={{ fontSize: '0.5625rem' }}>
         {label}
       </div>
-      <div className="font-mono" style={{ fontSize: 13, marginTop: 2 }}>
+      <div className="font-mono" style={{ fontSize: '0.8125rem', marginTop: '0.125rem' }}>
         {value}
       </div>
     </div>

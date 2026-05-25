@@ -196,9 +196,9 @@ export default function ResearchInputPage() {
           <SynapseBrandLink
             className="flex items-center gap-2.5 shrink-0"
             labelClassName="serif"
-            labelStyle={{ fontSize: 17, fontWeight: 500, letterSpacing: '-0.01em' }}
+            labelStyle={{ fontSize: '1.0625rem', fontWeight: 500, letterSpacing: '-0.01em' }}
           />
-          <nav className="flex gap-3 sm:gap-[18px]">
+          <nav className="flex gap-3 sm:gap-5">
             <span className="label">New brief</span>
             <Link
               to="/history"
@@ -225,7 +225,7 @@ export default function ResearchInputPage() {
           </span>
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center serif"
-            style={{ background: 'var(--bg-3)', fontSize: 13 }}
+            style={{ background: 'var(--bg-3)', fontSize: '0.8125rem' }}
             aria-label="user avatar"
           >
             {me ? getInitials(me.email) : ''}
@@ -234,14 +234,14 @@ export default function ResearchInputPage() {
       </AppNavbar>
 
       {/* Main */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] lg:overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_20rem] lg:overflow-hidden">
         {/* Composition column */}
-        <main className="flex flex-col px-5 py-10 sm:px-10 sm:py-12 lg:px-20 lg:py-[60px] lg:overflow-auto">
-          <div className="micro" style={{ marginBottom: 16 }}>
+        <main className="flex flex-col px-5 py-10 sm:px-10 sm:py-12 lg:px-20 lg:py-16 lg:overflow-auto">
+          <div className="micro" style={{ marginBottom: '1rem' }}>
             {formatNow()}
           </div>
           <h1
-            className="serif m-0 text-[40px] sm:text-[52px] lg:text-[64px]"
+            className="serif m-0 text-4xl sm:text-5xl lg:text-6xl"
             style={{
               lineHeight: 1,
               letterSpacing: '-0.03em',
@@ -261,7 +261,7 @@ export default function ResearchInputPage() {
               background: 'var(--bg-2)',
             }}
           >
-            <div className="label" style={{ marginBottom: 12, color: 'var(--muted)' }}>
+            <div className="label" style={{ marginBottom: '0.75rem', color: 'var(--muted)' }}>
               Topic
             </div>
             <textarea
@@ -272,12 +272,12 @@ export default function ResearchInputPage() {
               }}
               placeholder="Type your research topic here..."
               rows={1}
-              className="serif w-full bg-transparent outline-none resize-none overflow-hidden text-[20px] sm:text-[24px] lg:text-[28px]"
+              className="serif w-full bg-transparent outline-none resize-none overflow-hidden text-xl sm:text-2xl lg:text-3xl"
               style={{
                 lineHeight: 1.3,
                 fontWeight: 300,
                 color: 'var(--fg)',
-                minHeight: 80,
+                minHeight: '5rem',
                 letterSpacing: '-0.005em',
               }}
             />
@@ -285,7 +285,11 @@ export default function ResearchInputPage() {
             {/* Controls row — depth + three agent model selectors, actions on the right. */}
             <div
               className="flex flex-wrap items-center gap-3"
-              style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}
+              style={{
+                marginTop: '1.5rem',
+                paddingTop: '1.25rem',
+                borderTop: '1px solid var(--line)',
+              }}
             >
               <Select
                 value={depthValue}
@@ -296,7 +300,7 @@ export default function ResearchInputPage() {
                 renderTrigger={(opt) => (
                   <span className="flex flex-col items-start min-w-0 mr-1.5">
                     <span className="micro leading-none">Depth</span>
-                    <span className="font-sans text-[12px] leading-tight mt-0.5 text-fg">
+                    <span className="font-sans text-sm leading-tight mt-0.5 text-fg">
                       {opt?.label ?? '—'}
                     </span>
                   </span>
@@ -310,14 +314,14 @@ export default function ResearchInputPage() {
                   onValueChange={(v) => handleModelChange(agent, v)}
                   options={MODEL_OPTIONS}
                   ariaLabel={`${AGENTS[agent].name} model`}
-                  popupClassName="min-w-[260px]"
+                  popupClassName="min-w-64"
                   triggerClassName={PILL_TRIGGER_CLASS}
                   renderTrigger={(opt) => (
                     <>
                       <AgentDot agent={agent} size={18} className="mr-1" />
                       <span className="flex flex-col items-start min-w-0 mr-1.5">
                         <span className="micro leading-none">{AGENTS[agent].name}</span>
-                        <span className="font-sans text-[12px] leading-tight mt-0.5 text-fg truncate max-w-[150px]">
+                        <span className="font-sans text-sm leading-tight mt-0.5 text-fg truncate max-w-36">
                           {opt?.label ?? '—'}
                         </span>
                       </span>
@@ -346,7 +350,7 @@ export default function ResearchInputPage() {
             </div>
 
             {(errors.topic || showErrorInline || showPreviewErrorInline) && (
-              <div className="flex flex-col gap-1" style={{ marginTop: 14 }}>
+              <div className="flex flex-col gap-1" style={{ marginTop: '0.875rem' }}>
                 {errors.topic && (
                   <span
                     className="micro"
@@ -380,7 +384,7 @@ export default function ResearchInputPage() {
 
           {/* Recent / example questions */}
           <div className="mt-10 sm:mt-12">
-            <div className="micro" style={{ marginBottom: 14 }}>
+            <div className="micro" style={{ marginBottom: '0.875rem' }}>
               Or start from a recent question
             </div>
             {/* TODO: replace static examples with follow-ups from history. */}
@@ -393,7 +397,7 @@ export default function ResearchInputPage() {
                   key={i}
                   type="button"
                   onClick={() => handleExampleClick(q)}
-                  className={`flex items-start gap-3.5 text-left transition-colors hover:bg-bg-2 py-[18px] pr-5 ${
+                  className={`flex items-start gap-3.5 text-left transition-colors hover:bg-bg-2 py-5 pr-5 ${
                     i % 2 === 0 ? 'sm:border-r' : 'sm:pl-6'
                   }`}
                   style={{
@@ -403,13 +407,17 @@ export default function ResearchInputPage() {
                 >
                   <span
                     className="font-mono"
-                    style={{ fontSize: 11, color: 'var(--muted)', paddingTop: 3 }}
+                    style={{
+                      fontSize: '0.6875rem',
+                      color: 'var(--muted)',
+                      paddingTop: '0.1875rem',
+                    }}
                   >
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <span
                     className="serif"
-                    style={{ fontSize: 16, lineHeight: 1.4, color: 'var(--fg-2)' }}
+                    style={{ fontSize: '1rem', lineHeight: 1.4, color: 'var(--fg-2)' }}
                   >
                     {q}
                   </span>
@@ -426,13 +434,13 @@ export default function ResearchInputPage() {
           className="px-5 py-6 sm:px-6 border-t lg:border-t-0 lg:border-l border-line lg:overflow-auto"
           style={{ background: 'var(--bg-2)' }}
         >
-          <div className="flex items-baseline justify-between" style={{ marginBottom: 16 }}>
+          <div className="flex items-baseline justify-between" style={{ marginBottom: '1rem' }}>
             <span className="micro">Library — recent</span>
             <Link
               to="/history"
               className="font-mono"
               style={{
-                fontSize: 10,
+                fontSize: '0.625rem',
                 color: 'var(--muted)',
                 letterSpacing: '0.08em',
                 textDecoration: 'none',
@@ -451,7 +459,7 @@ export default function ResearchInputPage() {
                   params={{ jobId: job.id }}
                   className="block transition-colors hover:bg-bg-3"
                   style={{
-                    padding: '14px 0',
+                    padding: '0.875rem 0',
                     borderBottom:
                       i < (history.data?.length ?? 0) - 1 ? '1px solid var(--line-soft)' : 'none',
                     textDecoration: 'none',
@@ -461,9 +469,9 @@ export default function ResearchInputPage() {
                   <div
                     className="serif"
                     style={{
-                      fontSize: 14,
+                      fontSize: '0.875rem',
                       lineHeight: 1.3,
-                      marginBottom: 8,
+                      marginBottom: '0.5rem',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
@@ -474,7 +482,10 @@ export default function ResearchInputPage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <ConfidenceBar value={job.progress ?? 0} />
-                    <span className="font-mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+                    <span
+                      className="font-mono"
+                      style={{ fontSize: '0.625rem', color: 'var(--muted)' }}
+                    >
                       {job.created_at
                         ? new Date(job.created_at).toLocaleDateString('en-GB', {
                             day: '2-digit',
@@ -490,11 +501,11 @@ export default function ResearchInputPage() {
             <div
               className="serif"
               style={{
-                marginTop: 8,
-                padding: 16,
+                marginTop: '0.5rem',
+                padding: '1rem',
                 background: 'var(--bg)',
                 border: '1px solid var(--line-soft)',
-                fontSize: 13,
+                fontSize: '0.8125rem',
                 lineHeight: 1.5,
                 color: 'var(--fg-3)',
                 fontWeight: 300,

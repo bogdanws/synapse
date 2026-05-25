@@ -73,8 +73,7 @@ export function AuthNavbar({ tagline }: AuthNavbarProps) {
     >
       <SynapseBrandLink
         className="flex items-center gap-3.5"
-        labelClassName="serif"
-        labelStyle={{ fontSize: 20, fontWeight: 500, letterSpacing: '-0.02em' }}
+        labelClassName="serif text-xl font-medium tracking-tight"
       />
       <span className="micro" style={{ color: 'var(--muted)' }}>
         {tagline}

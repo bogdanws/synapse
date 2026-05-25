@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { AuthNavbar } from '../components/AppNavbar'
+import { Button } from '../components/ui/Button'
 import { useLogin, useRegister } from '../hooks/useAuth'
 
 const registerSchema = z
@@ -199,22 +200,15 @@ export default function RegisterPage() {
                 registration={register('confirmPassword')}
               />
 
-              <button
+              <Button
                 type="submit"
                 disabled={registerMutation.isPending || loginMutation.isPending}
-                className="w-full flex justify-center items-center mt-1 border font-sans text-[13px] cursor-pointer transition-transform duration-[120ms] hover:-translate-y-px disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                style={{
-                  padding: '15px 18px',
-                  background: 'var(--fg)',
-                  color: 'var(--bg)',
-                  borderColor: 'var(--fg)',
-                  letterSpacing: '-0.005em',
-                }}
+                className="mt-1 w-full justify-center"
               >
                 {registerMutation.isPending || loginMutation.isPending
                   ? 'Creating account…'
                   : 'Create account →'}
-              </button>
+              </Button>
             </form>
           </div>
 
