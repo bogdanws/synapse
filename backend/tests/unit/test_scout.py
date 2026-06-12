@@ -440,5 +440,86 @@ async def test_run_scout_continues_when_one_sub_question_search_fails() -> None:
     assert len(output.sources) == 1
 
 
+class _CapturingAgent(_StaticAgent):
+    """`_StaticAgent` that records the sources handed to `score`."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.scored_input: list[_RawSource] = []
+
+    async def score(self, topic: str, sources: list[_RawSource]) -> list[Source]:
+        self.scored_input = list(sources)
+        return await super().score(topic, sources)
+
+
+async def test_run_scout_seeds_parent_sources_before_searching() -> None:
+    """Follow-up runs prepend the parent's sources, then merge in fresh search hits.
+
+    The seed is converted to the internal raw form and placed first, so the
+    existing dedup (first-occurrence wins) keeps the parent copy when a fresh
+    search rediscovers the same URL, and the combined set is scored as one.
+    """
+    job_id = uuid4()
+    seed = [
+        Source(
+            id="s1",
+            url="https://parent.example/a",  # type: ignore[arg-type]
+            title="Parent A",
+            credibility=0.6,
+            relevance=0.7,
+            snippet="parent snippet",
+        )
+    ]
+    final = [
+        Source(
+            id="s1",
+            url="https://parent.example/a",  # type: ignore[arg-type]
+            title="Parent A",
+            credibility=0.6,
+            relevance=0.7,
+            snippet="...",
+        ),
+        Source(
+            id="s2",
+            url="https://new.example/b",  # type: ignore[arg-type]
+            title="New B",
+            credibility=0.5,
+            relevance=0.8,
+            snippet="...",
+        ),
+    ]
+    agent = _CapturingAgent(
+        sub_questions=["the follow-up question"],
+        search_results={
+            "the follow-up question": [
+                _raw("https://parent.example/a", title="dup-from-search"),
+                _raw("https://new.example/b", title="New B"),
+            ]
+        },
+        scored=final,
+    )
+
+    captured: list[ProgressEvent] = []
+    output = await run_scout(
+        job_id=job_id,
+        topic="the follow-up question",
+        agent=agent,  # type: ignore[arg-type]
+        publish=lambda e: _record(captured, e),
+        sub_questions_override=["the follow-up question"],
+        seed_sources=seed,
+    )
+
+    # Seed first, fresh hit second; the search-side duplicate of the seed URL is collapsed.
+    assert [r.url for r in agent.scored_input] == [
+        "https://parent.example/a",
+        "https://new.example/b",
+    ]
+    # The seed retained its own title/snippet through the conversion (not the search duplicate's).
+    assert agent.scored_input[0].title == "Parent A"
+    assert agent.scored_input[0].snippet == "parent snippet"
+    assert agent.scored_input[0].content is None
+    assert output.sources == final
+
+
 async def _record(out: list[ProgressEvent], event: ProgressEvent) -> None:
     out.append(event)

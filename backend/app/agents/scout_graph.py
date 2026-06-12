@@ -51,6 +51,7 @@ async def run_scout(
     agent: ScoutAgent,
     publish: EventPublisher = default_publish,
     sub_questions_override: list[str] | None = None,
+    seed_sources: list[Source] | None = None,
 ) -> ScoutOutput:
     """Execute Scout end-to-end and emit progress events.
 
@@ -59,6 +60,8 @@ async def run_scout(
     When `sub_questions_override` is supplied (user approved a preview plan), the decompose
     LLM call is skipped entirely and the provided questions are used as-is, preserving the
     user's approved plan rather than generating a new decomposition.
+
+    `seed_sources` carries a parent job's already-gathered sources into a follow-up run. They are prepended to the fresh search hits before dedup and re-scored as a single set, so the child report reuses the parent's evidence alongside anything the new question surfaces. Prepending makes the parent copy win dedup when a fresh search rediscovers the same URL.
     """
     if sub_questions_override:
         sub_questions = sub_questions_override
@@ -79,6 +82,9 @@ async def run_scout(
             _log.warning("scout_search_failed", job_id=str(job_id), query=q, error=str(result))
             continue
         raw_sources.extend(result)
+
+    if seed_sources:
+        raw_sources = [_seed_to_raw(s) for s in seed_sources] + raw_sources
 
     deduped = await agent.deduplicate(raw_sources)
     scored = await agent.score(topic, deduped)
@@ -106,3 +112,18 @@ async def run_scout(
 def _unscored_view(src: Source) -> Source:
     """Return a copy with credibility/relevance zeroed out for the discovery event."""
     return src.model_copy(update={"credibility": 0.0, "relevance": 0.0})
+
+
+def _seed_to_raw(src: Source) -> _RawSource:
+    """Adapt a persisted `Source` back to Scout's internal raw form for re-scoring.
+
+    `content` is None because the full article body isn't persisted; `derive_snippet` falls back to the stored snippet, which is all the scoring pass needs.
+    """
+    return _RawSource(
+        url=str(src.url),
+        title=src.title,
+        author=src.author,
+        published_at=src.published_at,
+        snippet=src.snippet,
+        content=None,
+    )
