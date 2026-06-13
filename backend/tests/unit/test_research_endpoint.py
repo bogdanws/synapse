@@ -456,7 +456,9 @@ async def test_follow_up_creates_child_inheriting_parent_settings(
     authed_client: AsyncClient, fake_session: _FakeSession
 ) -> None:
     with (
-        patch("app.api.routes.JobRepository.get_job", new=AsyncMock(return_value=_completed_parent())),
+        patch(
+            "app.api.routes.JobRepository.get_job", new=AsyncMock(return_value=_completed_parent())
+        ),
         patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()) as kiq,
     ):
         response = await authed_client.post(

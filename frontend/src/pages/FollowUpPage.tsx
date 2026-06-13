@@ -81,7 +81,13 @@ export default function FollowUpPage() {
       >
         <form
           onSubmit={handleSubmit(onSubmit)}
-          style={{ width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 20 }}
+          style={{
+            width: '100%',
+            maxWidth: 640,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+          }}
         >
           <div>
             <p className="micro" style={{ marginBottom: 8 }}>
