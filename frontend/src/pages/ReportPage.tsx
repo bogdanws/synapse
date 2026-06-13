@@ -5,8 +5,10 @@ import { ReportSection } from '../components/ReportSection'
 import { Button } from '../components/ui/Button'
 import { Chip } from '../components/ui/Chip'
 import { SynapseMark } from '../components/ui/SynapseMark'
+import { useJobLineage } from '../hooks/useJobLineage'
 import { useReport } from '../hooks/useReport'
 import { ApiError } from '../services/api'
+import type { FollowUpLink } from '../types/api'
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -20,6 +22,7 @@ function estimateReadingTime(sections: { body_md: string }[]): number {
 export default function ReportPage() {
   const { jobId } = useParams({ from: '/research/$jobId/report' })
   const { data, isLoading, error } = useReport(jobId)
+  const { data: lineage } = useJobLineage(jobId)
 
   if (isLoading) {
     return (
@@ -86,6 +89,17 @@ export default function ReportPage() {
         <span className="micro">
           Brief #{jobId.slice(0, 8).toUpperCase()} · Delivered {formatDate(deliveredAt)}
         </span>
+        {lineage?.parent && (
+          <Link
+            to="/research/$jobId/report"
+            params={{ jobId: lineage.parent.job_id }}
+            className="micro"
+            style={{ color: 'var(--scribe)', textDecoration: 'none' }}
+            title={lineage.parent.topic}
+          >
+            ↳ Follow-up of “{truncate(lineage.parent.topic, 48)}”
+          </Link>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <Chip agent="scout" dot>
             Verified
@@ -241,11 +255,55 @@ export default function ReportPage() {
                 ))}
               </ol>
             </section>
+
+            {lineage && lineage.children.length > 0 && (
+              <section style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid var(--fg)' }}>
+                <div className="micro" style={{ marginBottom: 16 }}>
+                  Follow-ups · {lineage.children.length}
+                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {lineage.children.map((child) => (
+                    <FollowUpRow key={child.job_id} child={child} />
+                  ))}
+                </ul>
+              </section>
+            )}
           </div>
           <aside style={{ background: 'var(--bg-2)' }} />
         </div>
       </div>
     </div>
+  )
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
+}
+
+function FollowUpRow({ child }: { child: FollowUpLink }) {
+  // A completed child has a report to read; otherwise link to its live progress view.
+  const done = child.status === 'completed'
+  return (
+    <li style={{ paddingBottom: 12 }}>
+      <Link
+        to={done ? '/research/$jobId/report' : '/research/$jobId'}
+        params={{ jobId: child.job_id }}
+        className="serif"
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 10,
+          color: 'inherit',
+          textDecoration: 'none',
+          fontSize: 14,
+        }}
+      >
+        <span style={{ flex: 1 }}>{child.question}</span>
+        <span className="micro" style={{ color: done ? 'var(--scout)' : 'var(--muted)' }}>
+          {child.status}
+        </span>
+      </Link>
+    </li>
   )
 }
 
