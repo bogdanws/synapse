@@ -131,7 +131,7 @@ describe('ReportPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Default: no lineage. Individual cross-link tests override this.
-    vi.mocked(useJobLineage).mockReturnValue({ data: undefined } as ReturnType<
+    vi.mocked(useJobLineage).mockReturnValue({ data: undefined } as unknown as ReturnType<
       typeof useJobLineage
     >)
   })
@@ -205,7 +205,7 @@ describe('ReportPage', () => {
         },
         children: [],
       },
-    } as ReturnType<typeof useJobLineage>)
+    } as unknown as ReturnType<typeof useJobLineage>)
     renderPage()
     expect(screen.getByText(/Follow-up of/i)).toBeInTheDocument()
   })
@@ -236,7 +236,7 @@ describe('ReportPage', () => {
           },
         ],
       },
-    } as ReturnType<typeof useJobLineage>)
+    } as unknown as ReturnType<typeof useJobLineage>)
     renderPage()
     expect(screen.getByText(/Follow-ups · 2/i)).toBeInTheDocument()
     expect(screen.getByText('What about exits?')).toBeInTheDocument()
