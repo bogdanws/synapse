@@ -123,6 +123,47 @@ export type ErrorModel = {
 };
 
 /**
+ * FollowUpLink
+ *
+ * One edge in a job's follow-up lineage.
+ *
+ * `job_id` / `topic` / `status` describe the job on the *other* end of the edge (the parent when this link is a job's parent, a child when it is one of a job's children); `question` is the follow-up question recorded on the edge itself.
+ */
+export type FollowUpLink = {
+    /**
+     * Job Id
+     */
+    job_id: string;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Topic
+     */
+    topic: string;
+    status: JobStatus;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * FollowUpRequest
+ *
+ * Inbound body for POST /api/research/{job_id}/follow-up.
+ *
+ * The child job inherits language, depth, and per-agent models from the parent, so the only thing the caller supplies is the new question.
+ */
+export type FollowUpRequest = {
+    /**
+     * Question
+     */
+    question: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -130,6 +171,19 @@ export type HttpValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * JobLineage
+ *
+ * Response body for GET /api/research/{job_id}/lineage.
+ */
+export type JobLineage = {
+    parent: FollowUpLink | null;
+    /**
+     * Children
+     */
+    children: Array<FollowUpLink>;
 };
 
 /**
@@ -1037,6 +1091,66 @@ export type PreviewResearchApiResearchPreviewPostResponses = {
 };
 
 export type PreviewResearchApiResearchPreviewPostResponse = PreviewResearchApiResearchPreviewPostResponses[keyof PreviewResearchApiResearchPreviewPostResponses];
+
+export type StartFollowUpApiResearchJobIdFollowUpPostData = {
+    body: FollowUpRequest;
+    path: {
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/research/{job_id}/follow-up';
+};
+
+export type StartFollowUpApiResearchJobIdFollowUpPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartFollowUpApiResearchJobIdFollowUpPostError = StartFollowUpApiResearchJobIdFollowUpPostErrors[keyof StartFollowUpApiResearchJobIdFollowUpPostErrors];
+
+export type StartFollowUpApiResearchJobIdFollowUpPostResponses = {
+    /**
+     * Successful Response
+     */
+    202: ResearchJob;
+};
+
+export type StartFollowUpApiResearchJobIdFollowUpPostResponse = StartFollowUpApiResearchJobIdFollowUpPostResponses[keyof StartFollowUpApiResearchJobIdFollowUpPostResponses];
+
+export type GetJobLineageApiResearchJobIdLineageGetData = {
+    body?: never;
+    path: {
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/research/{job_id}/lineage';
+};
+
+export type GetJobLineageApiResearchJobIdLineageGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetJobLineageApiResearchJobIdLineageGetError = GetJobLineageApiResearchJobIdLineageGetErrors[keyof GetJobLineageApiResearchJobIdLineageGetErrors];
+
+export type GetJobLineageApiResearchJobIdLineageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobLineage;
+};
+
+export type GetJobLineageApiResearchJobIdLineageGetResponse = GetJobLineageApiResearchJobIdLineageGetResponses[keyof GetJobLineageApiResearchJobIdLineageGetResponses];
 
 export type GetReportApiResearchJobIdReportGetData = {
     body?: never;

@@ -561,6 +561,114 @@
         ]
       }
     },
+    "/api/research/{job_id}/follow-up": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Start Follow Up",
+        "description": "Spawn a child research job that follows up on a completed report.\n\nThe child inherits the parent's language, depth, and per-agent models, and its single sub-question is the follow-up question \u2014 so the worker skips Scout's decompose step. The orchestrator separately seeds the child with the parent's sources (resolved via the FollowUp edge written here), so the run reuses the parent's evidence on top of a fresh, question-scoped search.",
+        "operationId": "start_follow_up_api_research__job_id__follow_up_post",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowUpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/research/{job_id}/lineage": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Get Job Lineage",
+        "description": "Return a job's immediate follow-up lineage: its parent (if any) and its children.",
+        "operationId": "get_job_lineage_api_research__job_id__lineage_get",
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobLineage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/research/{job_id}/report": {
       "get": {
         "tags": [
@@ -930,6 +1038,57 @@
         ],
         "title": "ErrorModel"
       },
+      "FollowUpLink": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "question",
+          "topic",
+          "status",
+          "created_at"
+        ],
+        "title": "FollowUpLink",
+        "description": "One edge in a job's follow-up lineage.\n\n`job_id` / `topic` / `status` describe the job on the *other* end of the edge (the parent when this link is a job's parent, a child when it is one of a job's children); `question` is the follow-up question recorded on the edge itself."
+      },
+      "FollowUpRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "FollowUpRequest",
+        "description": "Inbound body for POST /api/research/{job_id}/follow-up.\n\nThe child job inherits language, depth, and per-agent models from the parent, so the only thing the caller supplies is the new question."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -942,6 +1101,34 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "JobLineage": {
+        "properties": {
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpLink"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parent",
+          "children"
+        ],
+        "title": "JobLineage",
+        "description": "Response body for GET /api/research/{job_id}/lineage."
       },
       "JobStatus": {
         "type": "string",
