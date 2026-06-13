@@ -15,14 +15,16 @@ from uuid import UUID
 import structlog
 from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models import orm
 from app.models.research import (
     ClaimFlag,
     Contradiction,
     CriticAnnotations,
+    JobListResponse,
     JobStatus,
+    JobSummary,
     ReportSection,
     ScribeReport,
     SectionConfidence,
@@ -108,6 +110,64 @@ class JobRepository:
             report=report,
             annotations=annotations,
         )
+
+    async def list_jobs(self, user_id: UUID, *, limit: int, offset: int) -> JobListResponse:
+        """Return the user's jobs newest-first, with derived source count, confidence, and parent edge.
+
+        `source_count` is a correlated COUNT (0 when Scout hasn't written sources yet);
+        `overall_confidence` comes from the Critic annotations and is NULL until the job completes;
+        `parent_job_id`/`parent_topic` come from the at-most-one `FollowUp` child edge so the UI can
+        badge follow-up jobs and link back to the parent. Ordering carries a secondary `id` key so
+        offset paging stays stable when `created_at` ties.
+        """
+        parent = aliased(orm.ResearchJob)
+        source_count = (
+            select(func.count())
+            .select_from(orm.Source)
+            .where(orm.Source.job_id == orm.ResearchJob.id)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                orm.ResearchJob,
+                source_count,
+                orm.CriticAnnotation.overall_confidence,
+                orm.FollowUp.parent_job_id,
+                parent.topic,
+            )
+            .outerjoin(orm.Report, orm.Report.job_id == orm.ResearchJob.id)
+            .outerjoin(orm.CriticAnnotation, orm.CriticAnnotation.report_id == orm.Report.id)
+            .outerjoin(orm.FollowUp, orm.FollowUp.child_job_id == orm.ResearchJob.id)
+            .outerjoin(parent, parent.id == orm.FollowUp.parent_job_id)
+            .where(orm.ResearchJob.user_id == user_id)
+            .order_by(orm.ResearchJob.created_at.desc(), orm.ResearchJob.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).all()
+
+        total_stmt = (
+            select(func.count())
+            .select_from(orm.ResearchJob)
+            .where(orm.ResearchJob.user_id == user_id)
+        )
+        total = (await self._session.execute(total_stmt)).scalar_one()
+
+        items = [
+            JobSummary(
+                id=job.id,
+                topic=job.topic,
+                status=JobStatus(job.status),
+                progress=job.progress,
+                created_at=job.created_at,
+                source_count=count,
+                overall_confidence=confidence,
+                parent_job_id=parent_job_id,
+                parent_topic=parent_topic,
+            )
+            for job, count, confidence, parent_job_id, parent_topic in rows
+        ]
+        return JobListResponse(items=items, total=total, limit=limit, offset=offset)
 
     async def set_status(
         self,

@@ -20,6 +20,7 @@ from app.models.research import (
     ClaimFlag,
     CriticAnnotations,
     Depth,
+    JobListResponse,
     JobStatus,
     ResearchJob,
     ScribeReport,
@@ -422,3 +423,40 @@ async def test_export_markdown_passes_user_id_to_repo(authed_client_stub_db: Asy
     assert mock.await_count == 1
     _, kwargs = mock.await_args
     assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)
+
+
+async def test_list_research_requires_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/research")
+    assert response.status_code == 401
+
+
+async def test_list_research_defaults_to_limit_20_offset_0(
+    authed_client_stub_db: AsyncClient,
+) -> None:
+    empty = JobListResponse(items=[], total=0, limit=20, offset=0)
+    mock = AsyncMock(return_value=empty)
+    with patch("app.api.routes.JobRepository.list_jobs", new=mock):
+        response = await authed_client_stub_db.get("/api/research")
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 0, "limit": 20, "offset": 0}
+    _, kwargs = mock.await_args
+    assert kwargs == {"limit": 20, "offset": 0}
+
+
+async def test_list_research_forwards_pagination_params(
+    authed_client_stub_db: AsyncClient,
+) -> None:
+    mock = AsyncMock(return_value=JobListResponse(items=[], total=0, limit=5, offset=10))
+    with patch("app.api.routes.JobRepository.list_jobs", new=mock):
+        response = await authed_client_stub_db.get("/api/research?limit=5&offset=10")
+    assert response.status_code == 200
+    _, kwargs = mock.await_args
+    assert kwargs == {"limit": 5, "offset": 10}
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=51", "offset=-1"])
+async def test_list_research_rejects_out_of_range_params(
+    authed_client_stub_db: AsyncClient, query: str
+) -> None:
+    response = await authed_client_stub_db.get(f"/api/research?{query}")
+    assert response.status_code == 422

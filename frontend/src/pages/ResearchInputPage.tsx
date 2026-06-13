@@ -79,6 +79,8 @@ export default function ResearchInputPage() {
   const me = useMe()
   const { models, setModel, persist } = useAgentModels()
   const history = useResearchHistory()
+  // The history hook is paginated (useInfiniteQuery); the "recent" sidebar only needs a flat list.
+  const historyItems = history.data?.pages.flatMap((p) => p.items) ?? []
   const startResearch = useStartResearch()
   const previewResearch = usePreviewResearch()
 
@@ -170,7 +172,7 @@ export default function ResearchInputPage() {
     [previewResearch, navigate],
   )
 
-  const briefCount = history.data?.length ?? 0
+  const briefCount = historyItems.length
 
   const submitError = startResearch.error
   const showErrorInline =
@@ -450,9 +452,9 @@ export default function ResearchInputPage() {
             </Link>
           </div>
 
-          {history.data && history.data.length > 0 ? (
+          {historyItems.length > 0 ? (
             <div className="flex flex-col">
-              {history.data.map((job, i) => (
+              {historyItems.map((job, i) => (
                 <Link
                   key={job.id}
                   to="/research/$jobId"
@@ -461,7 +463,7 @@ export default function ResearchInputPage() {
                   style={{
                     padding: '0.875rem 0',
                     borderBottom:
-                      i < (history.data?.length ?? 0) - 1 ? '1px solid var(--line-soft)' : 'none',
+                      i < historyItems.length - 1 ? '1px solid var(--line-soft)' : 'none',
                     textDecoration: 'none',
                     color: 'inherit',
                   }}

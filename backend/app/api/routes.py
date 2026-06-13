@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.scout import ScoutAgent, ScoutValidationError
@@ -16,6 +16,7 @@ from app.db.session import get_db
 from app.middleware.ratelimit import limiter
 from app.models import orm
 from app.models.research import (
+    JobListResponse,
     JobStatus,
     PreviewResponse,
     ResearchJob,
@@ -78,6 +79,22 @@ async def start_research(
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
+
+
+@router.get(
+    "/research",
+    response_model=JobListResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["research"],
+)
+async def list_research(
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+) -> JobListResponse:
+    """Paginated list of the caller's research jobs, newest first."""
+    return await JobRepository(session).list_jobs(user.id, limit=limit, offset=offset)
 
 
 @router.post(
