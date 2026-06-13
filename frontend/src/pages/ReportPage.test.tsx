@@ -248,7 +248,8 @@ describe('ReportPage', () => {
       },
     } as unknown as ReturnType<typeof useJobLineage>)
     renderPage()
-    expect(screen.getByText(/Follow-ups · 2/i)).toBeInTheDocument()
+    expect(screen.getByText(/Continue the thread/i)).toBeInTheDocument()
+    expect(screen.getByText('· 2')).toBeInTheDocument()
     expect(screen.getByText('What about exits?')).toBeInTheDocument()
     expect(screen.getByText('And funding stages?')).toBeInTheDocument()
     expect(screen.getByText('scouting')).toBeInTheDocument()
