@@ -89,10 +89,7 @@ export default function ReportPage() {
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* App chrome */}
-      <AppNavbar
-        className="report-nav"
-        style={{ padding: '12px 28px', borderBottom: '1px solid var(--line)' }}
-      >
+      <AppNavbar variant="app" className="report-nav px-7">
         <div className="report-nav-meta">
           <SynapseBrandLink
             className="flex items-center gap-2.5 shrink-0"
@@ -108,7 +105,6 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/markdown`
             }}
@@ -118,7 +114,6 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/pdf`
             }}
@@ -126,9 +121,7 @@ export default function ReportPage() {
             Export · PDF
           </Button>
           <Link to="/research/$jobId/follow-up" params={{ jobId }}>
-            <Button size="sm" style={{ padding: '6px 12px', fontSize: 11 }}>
-              Ask follow-up →
-            </Button>
+            <Button size="sm">Ask follow-up →</Button>
           </Link>
         </div>
       </AppNavbar>

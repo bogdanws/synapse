@@ -1,5 +1,6 @@
 import type { Source } from '../types/api'
 import { credibilityColor, extractDomain } from '../lib/source-utils'
+import { cn } from './ui/cn'
 
 interface ScoreBarProps {
   label: string
@@ -17,23 +18,13 @@ function ScoreBar({ label, score }: ScoreBarProps) {
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
-      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+      className="flex items-center gap-1"
     >
-      <span
-        className="font-mono"
-        style={{
-          fontSize: 9,
-          color: 'var(--muted)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        }}
-      >
-        {label}
-      </span>
-      <div style={{ width: 32, height: 2, background: 'var(--line)' }}>
-        <div style={{ width: `${pct}%`, height: '100%', background: color }} />
+      <span className="font-mono text-xs uppercase tracking-widest text-muted">{label}</span>
+      <div className="h-0.5 w-8 bg-line">
+        <div className="h-full" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="font-mono" style={{ fontSize: 9, color }}>
+      <span className="font-mono text-xs" style={{ color }}>
         .{pct}
       </span>
     </div>
@@ -50,11 +41,11 @@ export function SourceRow({ source, index, highlighted }: SourceRowProps) {
   return (
     <li
       id={source.id}
-      className="source-row"
+      className={cn('source-row pb-3')}
       data-highlighted={highlighted ? 'true' : 'false'}
-      style={{ paddingBottom: 12, breakInside: 'avoid' }}
+      style={{ breakInside: 'avoid' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="flex items-center gap-2">
         <img
           src={`https://www.google.com/s2/favicons?domain=${extractDomain(source.url)}&sz=32`}
           alt=""
@@ -74,24 +65,8 @@ export function SourceRow({ source, index, highlighted }: SourceRowProps) {
           >
             [{index + 1}] {source.title}
           </a>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginTop: 4,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span
-              className="font-mono"
-              style={{
-                fontSize: 9,
-                color: 'var(--muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              }}
-            >
+          <div className="mt-1 flex flex-wrap items-center gap-2.5">
+            <span className="font-mono text-xs uppercase tracking-widest text-muted">
               {extractDomain(source.url)}
             </span>
             <ScoreBar label="Cred" score={source.credibility} />

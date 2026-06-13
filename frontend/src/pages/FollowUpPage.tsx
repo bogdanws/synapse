@@ -16,18 +16,15 @@ export default function FollowUpPage() {
       className="bg-bg text-fg"
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
     >
-      <AppNavbar
-        className="rule"
-        style={{ padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 10 }}
-      >
+      <AppNavbar variant="app" className="flex items-center gap-2.5 px-4 sm:px-8">
         <SynapseBrandLink
+          className="flex items-center gap-2.5"
           markSize={22}
           labelClassName="serif"
           labelStyle={{ fontSize: 17, fontWeight: 500 }}
-          style={{ display: 'flex', alignItems: 'center', gap: 10 }}
         />
-        <span style={{ width: 1, height: 16, background: 'var(--line)', marginLeft: 8 }} />
-        <span className="micro" style={{ marginLeft: 8, color: 'var(--muted)' }}>
+        <span className="w-px h-4 shrink-0" style={{ background: 'var(--line)' }} aria-hidden />
+        <span className="micro" style={{ color: 'var(--muted)' }}>
           Report
         </span>
         <span className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>

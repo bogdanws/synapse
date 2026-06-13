@@ -20,7 +20,7 @@ export function ConfidenceBar({ value, className }: ConfidenceBarProps) {
       <div className="flex-1 h-[2px] bg-line relative">
         <div className={cn('absolute left-0 top-0 bottom-0', color)} style={{ width: `${pct}%` }} />
       </div>
-      <span className="font-mono text-[10px] text-muted w-7 text-right">.{pct}</span>
+      <span className="font-mono text-xs text-muted w-7 text-right">.{pct}</span>
     </div>
   )
 }

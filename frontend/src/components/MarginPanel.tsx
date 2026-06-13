@@ -67,7 +67,7 @@ export function MarginPanel({ claimFlags, confidence }: MarginPanelProps) {
             borderBottom: '1px solid var(--line-soft)',
           }}
         >
-          <div className="flex items-center justify-between gap-3" style={{ marginBottom: 8 }}>
+          <div className="mb-2 flex items-center justify-between gap-3">
             <span className="micro">Confidence</span>
             <span className="margin-panel-toggle micro">
               {expanded ? 'Hide notes' : 'Show notes'}
@@ -83,25 +83,16 @@ export function MarginPanel({ claimFlags, confidence }: MarginPanelProps) {
           return (
             <div
               key={flag.claim_id}
-              style={{
-                borderLeft: `2px solid var(--${agent})`,
-                paddingLeft: 12,
-                paddingBottom: 14,
-                marginBottom: 18,
-              }}
+              className="mb-4 border-l-2 pb-3.5 pl-3"
+              style={{ borderColor: `var(--${agent})` }}
             >
               <div
-                className="font-mono mb-1"
-                style={{ fontSize: 9, letterSpacing: '0.12em', color: `var(--${agent})` }}
+                className="font-mono mb-1 text-xs tracking-widest"
+                style={{ color: `var(--${agent})` }}
               >
                 {verdictLabel(flag.verdict)}
               </div>
-              <div
-                className="serif"
-                style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--fg-2)' }}
-              >
-                {flag.rationale}
-              </div>
+              <div className="serif text-sm leading-normal text-fg-2">{flag.rationale}</div>
             </div>
           )
         })}

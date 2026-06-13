@@ -7,7 +7,10 @@ import prettier from 'eslint-config-prettier'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'src/types/api/**']),
+  // Patterns are prefixed with **/ so they match whether ESLint runs from
+  // frontend/ (npm run lint) or from the repo root with frontend/-prefixed
+  // paths (lefthook pre-commit, which passes staged files from the root).
+  globalIgnores(['**/dist/**', '**/src/types/api/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
