@@ -37,9 +37,15 @@ from app.models.research import (
     ScribeReport,
     Source,
 )
+from app.services.events import cleanup_for_job as default_cleanup
 from app.services.events import publish as default_publish
 from app.services.persistence import JobRepository, load_sources
 from app.services.search import ExaSearchClient
+
+# `JobCleanup` mirrors `EventPublisher` — a single-arg awaitable so tests can
+# stub it with a list-append closure. Default is `events_service.cleanup_for_job`,
+# which removes the persisted event log for a terminated job.
+JobCleanup = Callable[[UUID], Awaitable[None]]
 
 _log = structlog.get_logger(__name__)
 
@@ -157,6 +163,7 @@ async def run_pipeline(
     job_id: UUID,
     session_factory: SessionFactory,
     publish: EventPublisher = default_publish,
+    cleanup: JobCleanup = default_cleanup,
     http_client: httpx.AsyncClient | None = None,
 ) -> None:
     """Execute the full Scout → Scribe → Critic pipeline for a persisted job.
@@ -212,6 +219,7 @@ async def run_pipeline(
         if "error" in final_state and final_state["error"]:
             await _persist_failure(session_factory, job_id, final_state["error"])
             await publish(JobFailed(job_id=job_id, error=final_state["error"]))
+            await cleanup(job_id)
             return
 
         report = final_state.get("report")
@@ -223,6 +231,7 @@ async def run_pipeline(
             error = "pipeline finished without producing a report"
             await _persist_failure(session_factory, job_id, error)
             await publish(JobFailed(job_id=job_id, error=error))
+            await cleanup(job_id)
             return
 
         await _persist_success(session_factory, job_id, report=report, annotations=annotations)
@@ -232,6 +241,11 @@ async def run_pipeline(
                 overall_confidence=annotations.overall_confidence,
             )
         )
+        # Cleanup runs strictly *after* the terminal event has been published
+        # so subscribers attached at the time can still receive it from the
+        # live pub/sub stream. Reconnects that happen after this point fall
+        # back to the snapshot + frontend redirect.
+        await cleanup(job_id)
     finally:
         if owns_http:
             await http.aclose()

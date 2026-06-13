@@ -3,8 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { Button } from '../components/ui/Button'
-import { SynapseMark } from '../components/ui'
 import { useReport } from '../hooks/useReport'
 import { useStartFollowUp } from '../hooks/useStartFollowUp'
 import { ApiError } from '../services/api'
@@ -47,31 +47,19 @@ export default function FollowUpPage() {
       className="bg-bg text-fg"
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
     >
-      <div
-        className="rule"
-        style={{ padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 10 }}
-      >
-        <Link
-          to="/research/new"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <SynapseMark size={22} />
-          <span className="serif" style={{ fontSize: 17, fontWeight: 500 }}>
-            Synapse
-          </span>
-        </Link>
-        <span style={{ width: 1, height: 16, background: 'var(--line)', marginLeft: 8 }} />
+      <AppNavbar variant="app" className="flex items-center gap-2.5 px-4 sm:px-8">
+        <SynapseBrandLink
+          className="flex items-center gap-2.5"
+          markSize={22}
+          labelClassName="serif"
+          labelStyle={{ fontSize: 17, fontWeight: 500 }}
+        />
+        <span className="w-px h-4 shrink-0" style={{ background: 'var(--line)' }} aria-hidden />
         <Link
           to="/research/$jobId/report"
           params={{ jobId }}
           className="micro"
-          style={{ marginLeft: 8, color: 'var(--muted)', textDecoration: 'none' }}
+          style={{ color: 'var(--muted)', textDecoration: 'none' }}
         >
           Report
         </Link>
@@ -79,7 +67,7 @@ export default function FollowUpPage() {
           ›
         </span>
         <span className="label">Follow-up</span>
-      </div>
+      </AppNavbar>
 
       <div
         style={{

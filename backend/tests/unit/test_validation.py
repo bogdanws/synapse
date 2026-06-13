@@ -111,6 +111,15 @@ def test_cited_source_ids_are_derived_from_body_md() -> None:
     assert section.cited_source_ids == ["s2", "s1", "s3"]
 
 
+def test_cited_source_ids_accept_refs_without_caret() -> None:
+    section = ReportSection(
+        id="sec1",
+        heading="h",
+        body_md='<span data-claim="sec1.c1">a[s2][^s1]</span>',
+    )
+    assert section.cited_source_ids == ["s2", "s1"]
+
+
 # ---- section ids -----------------------------------------------------------
 
 
@@ -184,6 +193,15 @@ def test_rejects_footnote_ref_to_unknown_source() -> None:
     section = _section(
         "sec1",
         body_md='<span data-claim="sec1.c1">a[^s99]</span>',
+    )
+    with pytest.raises(ScribeValidationError, match="\\['s99'\\]"):
+        validate_scribe_report(_report([section]))
+
+
+def test_rejects_ref_without_caret_to_unknown_source() -> None:
+    section = _section(
+        "sec1",
+        body_md='<span data-claim="sec1.c1">a[s99]</span>',
     )
     with pytest.raises(ScribeValidationError, match="\\['s99'\\]"):
         validate_scribe_report(_report([section]))

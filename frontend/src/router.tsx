@@ -23,8 +23,16 @@ import ResearchPreviewPage from './pages/ResearchPreviewPage'
 import { previewStateSchema } from './pages/researchPreviewState'
 
 const authSearchSchema = z.object({
+  email: z.string().optional(),
   redirect: z.string().optional(),
 })
+
+function getSafeAuthRedirect(redirectTo: string | undefined): string {
+  if (!redirectTo || !redirectTo.startsWith('/') || redirectTo.startsWith('//')) {
+    return '/research/new'
+  }
+  return redirectTo
+}
 
 async function getMe(queryClient: QueryClient): Promise<UserRead | null> {
   return queryClient.ensureQueryData<UserRead | null>({
@@ -71,10 +79,10 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   validateSearch: authSearchSchema,
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, search }) => {
     const user = await getMe(context.queryClient)
     if (user) {
-      throw redirect({ to: '/research/new' })
+      throw redirect({ to: getSafeAuthRedirect(search.redirect) })
     }
   },
   component: LoginPage,
@@ -84,10 +92,10 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/register',
   validateSearch: authSearchSchema,
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, search }) => {
     const user = await getMe(context.queryClient)
     if (user) {
-      throw redirect({ to: '/research/new' })
+      throw redirect({ to: getSafeAuthRedirect(search.redirect) })
     }
   },
   component: RegisterPage,

@@ -16,11 +16,16 @@ import jwt
 import structlog
 from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.openapi.utils import get_openapi
+from limits import parse
 from pydantic import TypeAdapter
 
 from app.config import get_settings
+from app.db.session import async_session_factory
+from app.middleware.ratelimit import limiter
 from app.models.events import JobSnapshot, ProgressEvent
+from app.models.research import JobStatus, ResearchJob
 from app.services import events as events_service
+from app.services.persistence import JobNotFoundError, JobRepository
 
 router = APIRouter()
 
@@ -33,8 +38,16 @@ _JWT_AUDIENCE = ["fastapi-users:auth"]
 # Event types after which the server hangs up cleanly. Letting the client know "no more events are coming" is more useful than a silent idle connection.
 _TERMINAL_EVENT_TYPES = frozenset({"job_completed", "job_failed"})
 
+# Job statuses for which no further events will ever be published. A client
+# reconnecting after `cleanup_for_job` has run sees an empty replay; rather
+# than blocking forever on a dead pub/sub channel, the bridge closes after
+# the snapshot so the redirect-to-report logic in the frontend can fire.
+_TERMINAL_JOB_STATUSES = frozenset({JobStatus.COMPLETED, JobStatus.FAILED})
 
-def _user_id_from_cookie(token: str | None) -> str | None:
+_WS_CONNECT_LIMIT = parse("30/minute")
+
+
+def _user_id_from_cookie(token: str | None) -> UUID | None:
     if not token:
         return None
     try:
@@ -47,13 +60,45 @@ def _user_id_from_cookie(token: str | None) -> str | None:
     except jwt.PyJWTError:
         return None
     sub = payload.get("sub")
-    return sub if isinstance(sub, str) and sub else None
+    if not isinstance(sub, str) or not sub:
+        return None
+    try:
+        return UUID(sub)
+    except ValueError:
+        return None
+
+
+def _rate_limit_key(websocket: WebSocket, user_id: UUID | None) -> str:
+    if user_id is not None:
+        return f"user:{user_id}"
+    if websocket.client is not None:
+        return f"ip:{websocket.client.host}"
+    return "ip:unknown"
+
+
+def _ws_rate_limit_exceeded(websocket: WebSocket, user_id: UUID | None) -> bool:
+    if not limiter.enabled:
+        return False
+    return not limiter.limiter.hit(
+        _WS_CONNECT_LIMIT, "ws.jobs", _rate_limit_key(websocket, user_id)
+    )
 
 
 @router.websocket("/ws/jobs/{job_id}")
-async def jobs_ws(websocket: WebSocket, job_id: UUID) -> None:
+async def jobs_ws(
+    websocket: WebSocket,
+    job_id: UUID,
+) -> None:
     user_id = _user_id_from_cookie(websocket.cookies.get("synapse_auth"))
+    if _ws_rate_limit_exceeded(websocket, user_id):
+        await websocket.close(code=status.WS_1013_TRY_AGAIN_LATER)
+        return
     if user_id is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    job = await _get_authorized_job(job_id, user_id)
+    if job is None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
@@ -62,9 +107,37 @@ async def jobs_ws(websocket: WebSocket, job_id: UUID) -> None:
 
     try:
         # Snapshot first so a client that connected mid-pipeline has context.
-        await websocket.send_text(JobSnapshot(job_id=job_id).model_dump_json())
-        async with events_service.subscribe(job_id) as stream:
-            async for event in stream:
+        await websocket.send_text(JobSnapshot(job_id=job_id, job=job).model_dump_json())
+
+        # Subscribe to the live channel *before* querying persisted history.
+        # redis-py buffers messages received on a subscribed pubsub object,
+        # so any event published while we read the DB will be delivered
+        # below once we drain the iterator. We then dedupe replayed-vs-live
+        # frames by id so neither path can double-deliver.
+        async with events_service.subscribe(job_id) as live_stream:
+            max_replayed_id = 0
+            replayed_terminal = False
+            for event_id, event in await events_service.load_history(job_id):
+                await websocket.send_text(event.model_dump_json())
+                max_replayed_id = event_id
+                if event.type in _TERMINAL_EVENT_TYPES:
+                    replayed_terminal = True
+                    break
+
+            if replayed_terminal:
+                return
+
+            # If the job has already terminated but cleanup_for_job removed
+            # the terminal event, no further events will ever arrive on the
+            # pubsub channel. Closing here lets the frontend's snapshot-based
+            # redirect take over instead of hanging on a dead stream.
+            if job.status in _TERMINAL_JOB_STATUSES:
+                return
+
+            async for event_id, event in live_stream:
+                if event_id <= max_replayed_id:
+                    # Already delivered via the DB replay; drop the duplicate.
+                    continue
                 await websocket.send_text(event.model_dump_json())
                 if event.type in _TERMINAL_EVENT_TYPES:
                     break
@@ -74,6 +147,14 @@ async def jobs_ws(websocket: WebSocket, job_id: UUID) -> None:
         # Best-effort close; ignored if the socket is already gone.
         with suppress(RuntimeError):
             await websocket.close()
+
+
+async def _get_authorized_job(job_id: UUID, user_id: UUID) -> ResearchJob | None:
+    async with async_session_factory() as session:
+        try:
+            return await JobRepository(session).get_job(job_id, user_id=user_id)
+        except JobNotFoundError:
+            return None
 
 
 def _ws_payload_schemas() -> dict[str, dict[str, Any]]:

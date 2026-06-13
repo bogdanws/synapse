@@ -46,7 +46,7 @@ export function DialogContent({
       <BaseDialog.Popup
         className={cn(
           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-          'w-[min(560px,calc(100vw-32px))] max-h-[calc(100vh-64px)] overflow-y-auto',
+          'w-[min(35rem,calc(100vw-2rem))] max-h-[calc(100vh-4rem)] overflow-y-auto',
           'bg-bg text-fg border border-line p-8',
           'data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
           'transition-opacity duration-200 outline-none',

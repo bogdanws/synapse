@@ -28,6 +28,8 @@ const KNOWN_TYPES: ReadonlySet<string> = new Set([
   'job_failed',
 ])
 
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000] as const
+
 function jobsWsUrl(jobId: string): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${proto}//${window.location.host}/ws/jobs/${jobId}`
@@ -48,34 +50,61 @@ export function useJobStream(jobId: string, options: UseJobStreamOptions = {}): 
   const status = statusState.jobId === jobId ? statusState.status : 'connecting'
 
   useEffect(() => {
+    let active = true
+    let attempts = 0
+    let ws: WebSocket | null = null
+    let reconnectTimer: ReturnType<typeof window.setTimeout> | undefined
     const create = options.factory ?? ((url: string) => new WebSocket(url))
-    const ws = create(jobsWsUrl(jobId))
 
-    const onOpen = () => setStatusState({ jobId, status: 'open' })
-    const onError = () => setStatusState({ jobId, status: 'error' })
-    const onClose = () => setStatusState({ jobId, status: 'closed' })
-    const onMessage = (event: MessageEvent<string>) => {
-      const parsed = parseMessage(event.data)
-      if (!parsed) return
-      setEntries((prev) =>
-        prev.jobId === jobId
-          ? { jobId, messages: [...prev.messages, parsed] }
-          : { jobId, messages: [parsed] },
-      )
+    const connect = () => {
+      ws = create(jobsWsUrl(jobId))
+      const current = ws
+
+      const onOpen = () => {
+        if (!active) return
+        attempts = 0
+        setStatusState({ jobId, status: 'open' })
+      }
+      const onError = () => {
+        if (!active) return
+        setStatusState({ jobId, status: 'error' })
+      }
+      const onClose = (event: CloseEvent) => {
+        if (!active) return
+        const delay = RECONNECT_DELAYS_MS[attempts]
+        if (event.code !== 1000 && delay !== undefined) {
+          attempts += 1
+          setEntries({ jobId, messages: [] })
+          setStatusState({ jobId, status: 'connecting' })
+          reconnectTimer = window.setTimeout(connect, delay)
+          return
+        }
+        setStatusState({ jobId, status: 'closed' })
+      }
+      const onMessage = (event: MessageEvent<string>) => {
+        if (!active) return
+        const parsed = parseMessage(event.data)
+        if (!parsed) return
+        setEntries((prev) =>
+          prev.jobId === jobId
+            ? { jobId, messages: [...prev.messages, parsed] }
+            : { jobId, messages: [parsed] },
+        )
+      }
+
+      current.addEventListener('open', onOpen)
+      current.addEventListener('error', onError)
+      current.addEventListener('close', onClose)
+      current.addEventListener('message', onMessage)
     }
 
-    ws.addEventListener('open', onOpen)
-    ws.addEventListener('error', onError)
-    ws.addEventListener('close', onClose)
-    ws.addEventListener('message', onMessage)
+    connect()
 
     return () => {
-      ws.removeEventListener('open', onOpen)
-      ws.removeEventListener('error', onError)
-      ws.removeEventListener('close', onClose)
-      ws.removeEventListener('message', onMessage)
+      active = false
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       // 1000 = normal closure. Calling close on an already-closed socket is a no-op.
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
         ws.close(1000)
       }
     }

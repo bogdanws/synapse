@@ -436,6 +436,14 @@ export type UserCreate = {
      * Is Verified
      */
     is_verified?: boolean | null;
+    /**
+     * First Name
+     */
+    first_name: string;
+    /**
+     * Last Name
+     */
+    last_name: string;
 };
 
 /**
@@ -462,6 +470,14 @@ export type UserRead = {
      * Is Verified
      */
     is_verified?: boolean;
+    /**
+     * First Name
+     */
+    first_name: string;
+    /**
+     * Last Name
+     */
+    last_name: string;
 };
 
 /**
@@ -488,6 +504,14 @@ export type UserUpdate = {
      * Is Verified
      */
     is_verified?: boolean | null;
+    /**
+     * First Name
+     */
+    first_name?: string | null;
+    /**
+     * Last Name
+     */
+    last_name?: string | null;
 };
 
 /**
@@ -753,7 +777,7 @@ export type ProgressEvent = ({
  * First message sent on a WebSocket connection.
  *
  * Lets a client that connected mid-pipeline render the current state instead of waiting for the next event.
- * `job` is optional because DB persistence lands in a later change; until then we send only the id and the client falls back to live events for the rest.
+ * `job` is optional so callers can still emit an identity-only snapshot when no persisted job state is available.
  */
 export type JobSnapshot = {
     /**

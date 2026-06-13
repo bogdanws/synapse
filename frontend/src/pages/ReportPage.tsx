@@ -1,10 +1,11 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { MarginPanel } from '../components/MarginPanel'
 import { ReportSection } from '../components/ReportSection'
+import { SourceRow } from '../components/SourceRow'
 import { Button } from '../components/ui/Button'
-import { Chip } from '../components/ui/Chip'
-import { SynapseMark } from '../components/ui/SynapseMark'
 import { useJobLineage } from '../hooks/useJobLineage'
 import { useReport } from '../hooks/useReport'
 import { ApiError } from '../services/api'
@@ -23,6 +24,26 @@ export default function ReportPage() {
   const { jobId } = useParams({ from: '/research/$jobId/report' })
   const { data, isLoading, error } = useReport(jobId)
   const { data: lineage } = useJobLineage(jobId)
+  const [highlightedSourceId, setHighlightedSourceId] = useState<string | null>(null)
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const scrollToSource = useCallback((id: string) => {
+    setHighlightedSourceId(id)
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    window.history.pushState(null, '', `#${id}`)
+    if (highlightTimerRef.current !== null) {
+      clearTimeout(highlightTimerRef.current)
+    }
+    highlightTimerRef.current = setTimeout(() => setHighlightedSourceId(null), 2000)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current !== null) {
+        clearTimeout(highlightTimerRef.current)
+      }
+    }
+  }, [])
 
   if (isLoading) {
     return (
@@ -71,24 +92,18 @@ export default function ReportPage() {
       style={{ background: 'var(--bg)', color: 'var(--fg)' }}
     >
       {/* App chrome */}
-      <div
-        className="flex items-center gap-5 shrink-0"
-        style={{ padding: '12px 28px', borderBottom: '1px solid var(--line)' }}
-      >
-        <div className="flex items-center gap-2.5">
-          <SynapseMark />
-          <span className="serif" style={{ fontSize: 16, fontWeight: 500 }}>
-            Synapse
+      <AppNavbar variant="app" className="report-nav px-7">
+        <div className="report-nav-meta">
+          <SynapseBrandLink
+            className="flex items-center gap-2.5 shrink-0"
+            labelClassName="serif"
+            labelStyle={{ fontSize: 16, fontWeight: 500 }}
+          />
+          <span className="report-nav-rule" style={{ background: 'var(--line)' }} aria-hidden />
+          <span className="micro report-nav-brief">
+            Brief #{jobId.slice(0, 8).toUpperCase()} · Delivered {formatDate(deliveredAt)}
           </span>
         </div>
-        <span
-          className="w-px h-4 block shrink-0"
-          style={{ background: 'var(--line)' }}
-          aria-hidden
-        />
-        <span className="micro">
-          Brief #{jobId.slice(0, 8).toUpperCase()} · Delivered {formatDate(deliveredAt)}
-        </span>
         {lineage?.parent && (
           <Link
             to="/research/$jobId/report"
@@ -100,14 +115,10 @@ export default function ReportPage() {
             ↳ Follow-up of “{truncate(lineage.parent.topic, 48)}”
           </Link>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <Chip agent="scout" dot>
-            Verified
-          </Chip>
+        <div className="report-nav-actions">
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/markdown`
             }}
@@ -117,7 +128,6 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             size="sm"
-            style={{ padding: '6px 12px', fontSize: 11 }}
             onClick={() => {
               window.location.href = `/api/research/${jobId}/export/pdf`
             }}
@@ -125,69 +135,73 @@ export default function ReportPage() {
             Export · PDF
           </Button>
           <Link to="/research/$jobId/follow-up" params={{ jobId }}>
-            <Button size="sm" style={{ padding: '6px 12px', fontSize: 11 }}>
-              Ask follow-up →
-            </Button>
+            <Button size="sm">Ask follow-up →</Button>
           </Link>
         </div>
-      </div>
+      </AppNavbar>
 
-      {/* Masthead */}
-      <header style={{ padding: '56px 88px 32px', borderBottom: '1px solid var(--fg)' }}>
-        <div className="micro" style={{ marginBottom: 24 }}>
-          Synapse Report · {formatDate(deliveredAt)}
-        </div>
-        <h1
-          className="serif"
-          style={{
-            fontSize: 80,
-            lineHeight: 0.95,
-            letterSpacing: '-0.035em',
-            fontWeight: 300,
-            margin: 0,
-            textWrap: 'balance',
-          }}
-        >
-          {report.title}
-        </h1>
-        <div
-          className="flex gap-12"
-          style={{ marginTop: 36, paddingTop: 20, borderTop: '1px solid var(--line-soft)' }}
-        >
-          <MetaItem label="Drafted by" value={report.model} />
-          <MetaItem label="Audited by" value={annotations.model} />
-          <MetaItem label="Sources consulted" value={`${report.sources.length} cited`} />
-          <MetaItem label="Reading time" value={`${readingTime} min`} />
+      {/* Masthead — border stays full-width; content is bounded so the headline
+          doesn't sprawl on ultrawide viewports. */}
+      <header style={{ borderBottom: '1px solid var(--fg)' }}>
+        <div className="report-masthead-inner">
+          <div className="micro" style={{ marginBottom: 24 }}>
+            Synapse Report · {formatDate(deliveredAt)}
+          </div>
+          <h1
+            className="serif report-title"
+            style={{
+              lineHeight: 0.95,
+              letterSpacing: '-0.035em',
+              fontWeight: 300,
+              margin: 0,
+              textWrap: 'balance',
+            }}
+          >
+            {report.title}
+          </h1>
+          <div
+            className="report-meta-grid"
+            style={{ marginTop: 36, paddingTop: 20, borderTop: '1px solid var(--line-soft)' }}
+          >
+            <MetaItem label="Drafted by" value={report.model} />
+            <MetaItem label="Audited by" value={annotations.model} />
+            <MetaItem label="Sources consulted" value={`${report.sources.length} cited`} />
+            <MetaItem label="Reading time" value={`${readingTime} min`} />
+          </div>
         </div>
       </header>
 
-      {/* Executive summary */}
+      {/* Executive summary — bg-2 band stays full-width; inner div anchors the
+          text to the same 1280px grid as the masthead and body sections. */}
       <section
         className="serif"
         style={{
-          padding: '40px 88px',
           background: 'var(--bg-2)',
           borderBottom: '1px solid var(--line)',
         }}
       >
-        <div className="micro" style={{ marginBottom: 14 }}>
-          Executive summary
+        <div className="report-summary-inner">
+          <div className="micro" style={{ marginBottom: 14 }}>
+            Executive summary
+          </div>
+          <p
+            className="report-summary-text"
+            style={{
+              lineHeight: 1.4,
+              fontWeight: 300,
+              margin: 0,
+              maxWidth: 760,
+              letterSpacing: '-0.005em',
+            }}
+          >
+            {report.summary_md}
+          </p>
         </div>
-        <p
-          style={{
-            fontSize: 24,
-            lineHeight: 1.4,
-            fontWeight: 300,
-            margin: 0,
-            maxWidth: 920,
-            letterSpacing: '-0.005em',
-          }}
-        >
-          {report.summary_md}
-        </p>
       </section>
 
-      {/* Body sections — one grid row per section so margin notes align */}
+      {/* Body sections — one grid row per section so margin notes align.
+          The row spans full width so the annotation rail stays anchored to the
+          right edge, while the report copy is centered inside the main column. */}
       <div style={{ flex: 1 }}>
         {report.sections.map((section, i) => {
           const confidence = annotations.section_confidence.find(
@@ -196,28 +210,44 @@ export default function ReportPage() {
           const sectionFlags = annotations.claim_flags.filter((f) => f.section_id === section.id)
           return (
             <div
+              className="report-row"
               key={section.id}
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 280px',
                 borderTop: i === 0 ? undefined : '1px solid var(--line-soft)',
               }}
             >
-              <div
+              <div className="report-main-cell">
+                <div className="report-content-column">
+                  <ReportSection
+                    num={i + 1}
+                    section={section}
+                    claimFlags={sectionFlags}
+                    sources={report.sources}
+                    onSourceClick={scrollToSource}
+                  />
+                </div>
+              </div>
+              <aside
+                className="report-aside scrollbar"
                 style={{
-                  padding: '56px 56px 56px 88px',
-                  borderRight: '1px solid var(--line)',
+                  background: 'var(--bg-2)',
                 }}
               >
-                <ReportSection
-                  num={i + 1}
-                  section={section}
-                  confidence={confidence}
-                  claimFlags={sectionFlags}
+                <MarginPanel claimFlags={sectionFlags} confidence={confidence?.score} />
+                {/* Fade sentinel: always sticks to the visible bottom of the scroll
+                    container so overflowing content dissolves rather than hard-clips. */}
+                <div
+                  className="report-aside-fade"
+                  aria-hidden
+                  style={{
+                    position: 'sticky',
+                    bottom: 0,
+                    height: 40,
+                    marginTop: -40,
+                    background: 'linear-gradient(to bottom, transparent, var(--bg-2))',
+                    pointerEvents: 'none',
+                  }}
                 />
-              </div>
-              <aside style={{ background: 'var(--bg-2)' }}>
-                <MarginPanel section={section} sources={report.sources} claimFlags={sectionFlags} />
               </aside>
             </div>
           )
@@ -225,33 +255,38 @@ export default function ReportPage() {
 
         {/* Sources section */}
         <div
+          className="report-row report-sources-row"
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 280px',
             borderTop: '1px solid var(--line-soft)',
           }}
         >
-          <div style={{ padding: '56px 56px 56px 88px', borderRight: '1px solid var(--line)' }}>
-            <section style={{ paddingTop: 24, borderTop: '1px solid var(--fg)' }}>
+          <div className="report-main-cell">
+            <section
+              className="report-content-column"
+              style={{
+                paddingTop: 24,
+                borderTop: '1px solid var(--fg)',
+              }}
+            >
               <div className="micro" style={{ marginBottom: 16 }}>
                 References · {report.sources.length} sources cited
               </div>
               <ol
+                className="report-sources-list"
                 style={{
                   paddingLeft: 22,
                   fontFamily: 'var(--serif)',
                   fontSize: 12,
                   lineHeight: 1.55,
-                  columns: 2,
-                  columnGap: 32,
                 }}
               >
                 {report.sources.map((src, idx) => (
-                  <li key={src.id} style={{ paddingBottom: 4, breakInside: 'avoid' }}>
-                    <a href={src.url} target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>
-                      [{idx + 1}] {src.title}
-                    </a>
-                  </li>
+                  <SourceRow
+                    key={src.id}
+                    source={src}
+                    index={idx}
+                    highlighted={highlightedSourceId === src.id}
+                  />
                 ))}
               </ol>
             </section>
@@ -269,7 +304,7 @@ export default function ReportPage() {
               </section>
             )}
           </div>
-          <aside style={{ background: 'var(--bg-2)' }} />
+          <aside className="report-sources-aside" style={{ background: 'var(--bg-2)' }} />
         </div>
       </div>
     </div>

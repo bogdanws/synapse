@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 
-import { SynapseMark } from '../components/ui'
+import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 
 /*
  * History placeholder. Full implementation will replace this with a paginated
@@ -13,30 +13,16 @@ export default function HistoryPage() {
       className="bg-bg text-fg"
       style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
     >
-      <div
-        className="rule"
-        style={{ padding: '16px 32px', display: 'flex', alignItems: 'center', gap: 10 }}
-      >
-        <Link
-          to="/research/new"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <SynapseMark size={22} />
-          <span className="serif" style={{ fontSize: 17, fontWeight: 500 }}>
-            Synapse
-          </span>
-        </Link>
-        <span style={{ width: 1, height: 16, background: 'var(--line)', marginLeft: 8 }} />
-        <span className="label" style={{ marginLeft: 8 }}>
-          Library
-        </span>
-      </div>
+      <AppNavbar variant="app" className="flex items-center gap-2.5 px-4 sm:px-8">
+        <SynapseBrandLink
+          className="flex items-center gap-2.5"
+          markSize={22}
+          labelClassName="serif"
+          labelStyle={{ fontSize: 17, fontWeight: 500 }}
+        />
+        <span className="w-px h-4 shrink-0" style={{ background: 'var(--line)' }} aria-hidden />
+        <span className="label">Library</span>
+      </AppNavbar>
 
       <div
         style={{

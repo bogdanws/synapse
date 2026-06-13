@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import ReportPage from './ReportPage'
@@ -64,14 +64,14 @@ const _VERIFIED_REPORT: VerifiedReport = {
       {
         id: 'sec1',
         heading: 'The 2023 inflection',
-        body_md: 'CEE deal volume fell <span data-claim="sec1.c1">41% YoY</span> in Q1 2023.',
+        body_md: 'CEE deal volume fell <span data-claim="sec1.c1">41% YoY</span> in Q1 2023.[^s1]',
         cited_source_ids: ['s1'],
       },
       {
         id: 'sec2',
         heading: 'LP Dynamics',
-        body_md: 'U.S. and U.K. pension funds reduced commitments.',
-        cited_source_ids: [],
+        body_md: 'U.S. and U.K. pension funds reduced commitments.[s2]',
+        cited_source_ids: ['s2'],
       },
     ],
     sources: [
@@ -82,6 +82,14 @@ const _VERIFIED_REPORT: VerifiedReport = {
         credibility: 0.92,
         relevance: 0.88,
         snippet: 'CEE deal volume dropped 41% YoY.',
+      },
+      {
+        id: 's2',
+        url: 'https://www.pitchbook.com/news/articles',
+        title: 'PitchBook News',
+        credibility: 0.75,
+        relevance: 0.6,
+        snippet: 'Global VC trends analysis.',
       },
     ],
     contradictions: [],
@@ -188,6 +196,8 @@ describe('ReportPage', () => {
     expect(screen.getByText(/back to progress view/i)).toBeInTheDocument()
   })
 
+  // —— Follow-up cross-links ——
+
   it('renders a back-link to the parent when this report is a follow-up', () => {
     vi.mocked(useReport).mockReturnValue({
       data: _VERIFIED_REPORT,
@@ -242,5 +252,149 @@ describe('ReportPage', () => {
     expect(screen.getByText('What about exits?')).toBeInTheDocument()
     expect(screen.getByText('And funding stages?')).toBeInTheDocument()
     expect(screen.getByText('scouting')).toBeInTheDocument()
+  })
+
+  // —— Source panel enhancements ——
+
+  it('renders source rows with id and class for footnote targeting', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    for (const src of _VERIFIED_REPORT.report.sources) {
+      const row = document.getElementById(src.id)
+      expect(row).toBeInTheDocument()
+      expect(row).toHaveClass('source-row')
+    }
+  })
+
+  it('renders favicon images via Google S2 service', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    const { container } = renderPage()
+
+    const imgs = container.querySelectorAll('img[src*="google.com/s2/favicons"]')
+    expect(imgs.length).toBe(_VERIFIED_REPORT.report.sources.length)
+
+    for (const img of imgs) {
+      expect(img).toHaveAttribute('width', '16')
+      expect(img).toHaveAttribute('height', '16')
+    }
+  })
+
+  it('links each source to its full URL', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    for (const src of _VERIFIED_REPORT.report.sources) {
+      const row = document.getElementById(src.id)
+      expect(row).toBeInTheDocument()
+      const link = row!.querySelector('a[href][target="_blank"]')
+      expect(link).toHaveAttribute('href', src.url)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noreferrer')
+    }
+  })
+
+  it('renders domain labels extracted from URLs', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    expect(screen.getByText('dealroom.co')).toBeInTheDocument()
+    expect(screen.getByText('pitchbook.com')).toBeInTheDocument()
+  })
+
+  it('renders credibility and relevance scores inside each source row', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    for (const src of _VERIFIED_REPORT.report.sources) {
+      const row = document.getElementById(src.id)
+      expect(row).toBeInTheDocument()
+      const pctCred = `.${Math.round(src.credibility * 100)}`
+      const pctRel = `.${Math.round(src.relevance * 100)}`
+      expect(row!.textContent).toContain(pctCred)
+      expect(row!.textContent).toContain(pctRel)
+    }
+  })
+
+  it('renders credibility and relevance labels', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    const list = screen.getByRole('list')
+    expect(list).toBeInTheDocument()
+    expect(list.textContent).toContain('Cred')
+    expect(list.textContent).toContain('Rel')
+  })
+
+  it('scrolls to and highlights a source row when a footnote is clicked', async () => {
+    vi.useFakeTimers()
+    const scrollIntoViewMock = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock
+
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    // Find and click the footnote link (href='#s1' distinguishes it from the source row)
+    const footnote = document.querySelector('a[href="#s1"]') as HTMLElement | null
+    expect(footnote).toBeInTheDocument()
+    act(() => {
+      footnote!.click()
+    })
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+
+    // Assert the source row is highlighted
+    const row = document.querySelector('#s1')
+    expect(row).toHaveAttribute('data-highlighted', 'true')
+
+    // Advance past the 2-second highlight timer
+    act(() => {
+      vi.advanceTimersByTime(2001)
+    })
+    expect(row).toHaveAttribute('data-highlighted', 'false')
+
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+    vi.useRealTimers()
+  })
+
+  it('renders source markers without carets as clickable footnotes', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    expect(document.querySelector('a[href="#s2"]')).toBeInTheDocument()
   })
 })

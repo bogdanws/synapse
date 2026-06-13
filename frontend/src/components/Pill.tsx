@@ -33,16 +33,20 @@ export function Pill({
       {agent && <AgentDot agent={agent} size={18} className="mr-1" />}
       <div className="flex flex-col items-start">
         <span className="micro leading-none">{label}</span>
-        <div className="font-sans text-[12px] leading-tight mt-0.5">{value}</div>
+        <div className="font-sans text-sm leading-tight mt-0.5">{value}</div>
       </div>
     </>
   )
 
   const baseClasses = cn(
-    'inline-flex items-center gap-1.5 border border-line px-3 py-1.5',
+    'inline-flex items-center gap-1.5 border border-line px-3 py-1.5 transition-colors duration-150',
     interactive &&
       !disabled &&
       'cursor-pointer hover:-translate-y-px transition-transform duration-100',
+    // When a focusable child (e.g. Select trigger) is hovered or focused, brighten the pill border
+    // so the whole pill feels active, without making the pill itself a button.
+    !disabled &&
+      'has-[button:hover]:border-fg has-[button:focus-visible]:border-fg has-[[data-popup-open]]:border-fg',
     disabled && 'opacity-50 cursor-not-allowed',
     className,
   )
