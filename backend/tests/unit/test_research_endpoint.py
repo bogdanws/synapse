@@ -135,6 +135,33 @@ async def test_start_research_persists_row_and_returns_pending_job(
     assert persisted.models == _VALID_MODELS
 
 
+async def test_start_research_marks_job_failed_when_enqueue_fails(
+    authed_client: AsyncClient, fake_session: _FakeSession
+) -> None:
+    """A broker failure after the row is committed must not leave the job stuck
+    in `pending` — the route marks it failed and returns 503."""
+    with (
+        patch(
+            "app.api.routes.run_research_pipeline.kiq",
+            new=AsyncMock(side_effect=ConnectionError("broker down")),
+        ),
+        patch(
+            "app.api.routes.JobRepository.mark_failed", new=AsyncMock()
+        ) as mark_failed,
+    ):
+        response = await authed_client.post(
+            "/api/research",
+            json={"topic": "Quantum computing", "models": _VALID_MODELS},
+        )
+
+    assert response.status_code == 503
+    mark_failed.assert_awaited_once()
+    persisted = fake_session.added[0]
+    assert mark_failed.await_args.args[0] == persisted.id
+    # One commit for the row, one for the failed-status update.
+    assert fake_session.commits == 2
+
+
 @pytest.mark.parametrize("bad_topic", ["", "a", "no"])
 async def test_start_research_rejects_short_topic(
     authed_client: AsyncClient, bad_topic: str
