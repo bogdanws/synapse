@@ -407,7 +407,7 @@ def _weasyprint_sync(html: str) -> bytes:
     # by name and profilers can attribute CPU time correctly.
     result = weasyprint.HTML(string=html, url_fetcher=_deny_url_fetcher).write_pdf()
     assert result is not None  # only None when a target path is passed; we don't
-    return result
+    return bytes(result)
 
 
 async def render_pdf(verified: VerifiedReport) -> bytes:
