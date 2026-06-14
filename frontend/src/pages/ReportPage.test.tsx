@@ -330,4 +330,121 @@ describe('ReportPage', () => {
 
     expect(document.querySelector('a[href="#s2"]')).toBeInTheDocument()
   })
+
+  // —— Contradictions section ——
+
+  it('does not render the contradictions section when the list is empty', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    expect(screen.queryByText(/where sources disagree/i)).not.toBeInTheDocument()
+  })
+
+  it('renders the contradictions section with topic, attributed statements, and pills', () => {
+    const reportWithContradictions = {
+      ..._VERIFIED_REPORT,
+      report: {
+        ..._VERIFIED_REPORT.report,
+        contradictions: [
+          {
+            topic: 'Direction of deal volume',
+            positions: [
+              { statement: 'Deal volume is growing.', source_ids: ['s1'] },
+              { statement: 'Deal volume is declining.', source_ids: ['s2'] },
+            ],
+          },
+        ],
+      },
+    }
+    vi.mocked(useReport).mockReturnValue({
+      data: reportWithContradictions,
+      isLoading: false,
+      error: null,
+    })
+    renderPage()
+
+    expect(screen.getByText(/where sources disagree/i)).toBeInTheDocument()
+    // Topic frames the disagreement; each side's statement is shown separately.
+    expect(screen.getByRole('heading', { name: /Direction of deal volume/i })).toBeInTheDocument()
+    expect(screen.getByText(/Deal volume is growing\./i)).toBeInTheDocument()
+    expect(screen.getByText(/Deal volume is declining\./i)).toBeInTheDocument()
+    // Each statement carries its own attributed source pill.
+    expect(screen.getByRole('button', { name: /Dealroom Q1 2026/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /PitchBook News/ })).toBeInTheDocument()
+  })
+
+  it('clicking a contradiction source pill scrolls to and highlights that source row', async () => {
+    vi.useFakeTimers()
+    const scrollIntoViewMock = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock
+
+    const reportWithContradictions = {
+      ..._VERIFIED_REPORT,
+      report: {
+        ..._VERIFIED_REPORT.report,
+        contradictions: [
+          {
+            topic: 'Deal volume',
+            positions: [
+              { statement: 'Volume rose.', source_ids: ['s1'] },
+              { statement: 'Volume fell.', source_ids: ['s2'] },
+            ],
+          },
+        ],
+      },
+    }
+    vi.mocked(useReport).mockReturnValue({
+      data: reportWithContradictions,
+      isLoading: false,
+      error: null,
+    })
+
+    renderPage()
+
+    // Click the pill for source s1 (shown as "[1] Dealroom Q1 2026")
+    const pill = screen.getByRole('button', { name: /Dealroom Q1 2026/ })
+    act(() => {
+      pill.click()
+    })
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+
+    const row = document.getElementById('s1')
+    expect(row).toHaveAttribute('data-highlighted', 'true')
+
+    act(() => {
+      vi.advanceTimersByTime(2001)
+    })
+    expect(row).toHaveAttribute('data-highlighted', 'false')
+
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+    vi.useRealTimers()
+  })
+
+  it('shows contradiction count label in the section header', () => {
+    const withOne = {
+      ..._VERIFIED_REPORT,
+      report: {
+        ..._VERIFIED_REPORT.report,
+        contradictions: [
+          {
+            topic: 'Single conflict',
+            positions: [
+              { statement: 'A.', source_ids: ['s1'] },
+              { statement: 'B.', source_ids: ['s2'] },
+            ],
+          },
+        ],
+      },
+    }
+    vi.mocked(useReport).mockReturnValue({ data: withOne, isLoading: false, error: null })
+    renderPage()
+
+    expect(screen.getByText(/1 contradiction found/i)).toBeInTheDocument()
+  })
 })
