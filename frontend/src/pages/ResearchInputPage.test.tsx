@@ -185,8 +185,8 @@ describe('ResearchInputPage', () => {
       'synapse:agent-models:v1',
       JSON.stringify({
         scout: 'openai/gpt-4o-mini',
-        scribe: 'deepseek/deepseek-v4-flash',
-        critic: 'qwen/qwen3.6-plus',
+        scribe: 'deepseek/deepseek-v4-pro',
+        critic: 'qwen/qwen3.7-plus',
       }),
     )
 
@@ -209,8 +209,8 @@ describe('ResearchInputPage', () => {
         expect.objectContaining({
           models: {
             scout: 'openai/gpt-4o-mini',
-            scribe: 'deepseek/deepseek-v4-flash',
-            critic: 'qwen/qwen3.6-plus',
+            scribe: 'deepseek/deepseek-v4-pro',
+            critic: 'qwen/qwen3.7-plus',
           },
         }),
       )

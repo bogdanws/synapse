@@ -36,8 +36,8 @@ describe('useAgentModels', () => {
   it('returns persisted values when localStorage has a valid payload', () => {
     const stored = {
       scout: 'openai/gpt-4o-mini',
-      scribe: 'deepseek/deepseek-v4-flash',
-      critic: 'qwen/qwen3.6-plus',
+      scribe: 'deepseek/deepseek-v4-pro',
+      critic: 'qwen/qwen3.7-plus',
     }
     localStorage.setItem(MODEL_STORAGE_KEY, JSON.stringify(stored))
 
