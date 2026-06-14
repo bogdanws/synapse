@@ -1,6 +1,8 @@
-"""Domain-based credibility prior for sources.
+"""Domain-based credibility prior for sources, and the rule that blends it with the LLM rating.
 
-Pure heuristic: maps the registrable host of a URL to a prior in [0, 1]. Scout multiplies this with an LLM rating to produce the final `Source.credibility`, so unfamiliar but legitimate outlets aren't punished here — the LLM pass adjusts those.
+`domain_prior` maps the registrable host of a URL to a curated prior in [0, 1], or `None` when the host is unknown. `combine_credibility` then folds that prior together with Scout's per-source LLM rating to produce the final `Source.credibility`.
+
+The key design choice: an unknown host carries *no* credibility signal, so we defer entirely to the LLM rather than anchoring on a made-up default. A multiplicative default-prior model (the previous approach) capped legitimate-but-unfamiliar outlets — e.g. an official vendor or documentation site — at the default, which the LLM could only ever drag lower. Deferring fixes that floor without hardcoding more hosts.
 """
 
 from __future__ import annotations
@@ -45,18 +47,22 @@ _TLD_PRIORS: dict[str, float] = {
     "int": 0.85,
 }
 
-DEFAULT_PRIOR = 0.55
+# Weight on the curated domain prior when blending with the LLM rating for a *known* host. The LLM is explicitly told not to judge domain reputation, so it should only lightly nudge a curated prior, not override it. Must stay in [0, 1].
+_PRIOR_WEIGHT = 0.7
+
+# Credibility used only when we have no signal at all: unknown host *and* no LLM rating (e.g. the rating call failed). Deliberately neutral.
+_NO_SIGNAL_CREDIBILITY = 0.5
 
 
-def domain_prior(url: str) -> float:
-    """Return the credibility prior in [0, 1] for the given URL's host.
+def domain_prior(url: str) -> float | None:
+    """Return the credibility prior in [0, 1] for the given URL's host, or `None` if unknown.
 
-    Resolution order (first match wins): explicit host in `_HOST_PRIORS` → TLD in `_TLD_PRIORS` → `DEFAULT_PRIOR`.
+    Resolution order (first match wins): explicit host in `_HOST_PRIORS` → TLD in `_TLD_PRIORS` → `None`. `None` means "no domain-level signal"; callers should defer to other evidence rather than substituting a default.
     """
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower().lstrip(".")
     if not host:
-        return DEFAULT_PRIOR
+        return None
 
     for known, score in _HOST_PRIORS.items():
         if host == known or host.endswith("." + known):
@@ -66,4 +72,19 @@ def domain_prior(url: str) -> float:
     if tld in _TLD_PRIORS:
         return _TLD_PRIORS[tld]
 
-    return DEFAULT_PRIOR
+    return None
+
+
+def combine_credibility(prior: float | None, llm_cred: float | None) -> float:
+    """Fold a domain prior and an LLM rating into a final credibility in [0, 1].
+
+    - Both present: weighted arithmetic mean, anchored on the curated prior (`_PRIOR_WEIGHT`). The mean can lift or lower the prior, unlike the old product which could only shrink it, but the weight keeps a curated prior dominant.
+    - Unknown host (`prior is None`): defer to the LLM rating; the domain tells us nothing.
+    - LLM rating missing (`llm_cred is None`): anchor on the prior alone.
+    - Neither signal: fall back to a neutral constant.
+    """
+    if prior is None:
+        return _NO_SIGNAL_CREDIBILITY if llm_cred is None else llm_cred
+    if llm_cred is None:
+        return prior
+    return _PRIOR_WEIGHT * prior + (1.0 - _PRIOR_WEIGHT) * llm_cred
