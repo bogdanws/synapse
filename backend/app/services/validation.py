@@ -14,6 +14,10 @@ Pydantic catches type errors for free. These validators enforce the cross-field 
     outside any claim span is an "orphan" the Critic can never attach a verdict
     to, so the whole section ends up unverifiable. Catching it here turns a
     silently claim-less report into an actionable retry for the Scribe.
+  * Each `Contradiction` in `report.contradictions` has >= 2 positions; every
+    position cites at least one known `Source.id`; and no source appears on more
+    than one side (the positions are mutually exclusive). An empty contradictions
+    list is valid.
 
 `ReportSection.cited_source_ids` is intentionally not validated here: it is derived from `body_md` by a model_validator on the section itself, so it cannot disagree with the prose.
 
@@ -26,6 +30,7 @@ import re
 
 from app.models.research import (
     ClaimFlag,
+    Contradiction,
     CriticAnnotations,
     ReportSection,
     ScribeReport,
@@ -68,6 +73,7 @@ def validate_scribe_report(report: ScribeReport) -> None:
         expected_section_id = f"sec{index}"
         _validate_claim_spans(section, expected_section_id)
         _validate_footnote_refs(section, source_ids)
+    _validate_contradictions(report.contradictions, source_ids)
 
 
 def validate_critic_annotations(annotations: CriticAnnotations, report: ScribeReport) -> None:
@@ -159,6 +165,39 @@ def _validate_claim_spans(section: ReportSection, expected_section_id: str) -> N
             raise ScribeValidationError(msg)
         seen.add(claim_id)
         expected_local += 1
+
+
+def _validate_contradictions(contradictions: list[Contradiction], source_ids: set[str]) -> None:
+    for i, contradiction in enumerate(contradictions):
+        label = f"contradiction #{i + 1}"
+        if len(contradiction.positions) < 2:
+            msg = f"{label}: must have >= 2 positions (got {len(contradiction.positions)})"
+            raise ScribeValidationError(msg)
+
+        # A source may appear at most once across all positions: a single source
+        # cannot simultaneously hold two contradicting sides.
+        seen_sources: set[str] = set()
+        for j, position in enumerate(contradiction.positions, start=1):
+            if not position.source_ids:
+                msg = f"{label}, position #{j}: must cite at least one source"
+                raise ScribeValidationError(msg)
+
+            unknown = set(position.source_ids) - source_ids
+            if unknown:
+                msg = (
+                    f"{label}, position #{j}: source_ids {sorted(unknown)} "
+                    f"do not match any Source.id"
+                )
+                raise ScribeValidationError(msg)
+
+            overlap = seen_sources.intersection(position.source_ids)
+            if overlap:
+                msg = (
+                    f"{label}: source_ids {sorted(overlap)} appear on more than one "
+                    f"position; each source may hold only one side"
+                )
+                raise ScribeValidationError(msg)
+            seen_sources.update(position.source_ids)
 
 
 def _validate_footnote_refs(section: ReportSection, source_ids: set[str]) -> None:

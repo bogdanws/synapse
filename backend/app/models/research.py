@@ -106,9 +106,30 @@ class ReportSection(BaseModel):
         return self
 
 
-class Contradiction(BaseModel):
-    description: str
+class ContradictionPosition(BaseModel):
+    """One side of a disagreement: a statement and the sources that hold it.
+
+    Attributing the statement to its source(s) is the whole point — a flat list
+    of `source_ids` per contradiction can't tell the reader which source claims
+    what. `source_ids` lists the sources advancing this position (>= 1).
+    """
+
+    statement: str
     source_ids: list[str]
+
+
+class Contradiction(BaseModel):
+    """A factual disagreement between sources, decomposed into opposing sides.
+
+    `topic` names the dimension under dispute (e.g. "First commercial operation
+    date"); `positions` holds the >= 2 mutually exclusive sides, each attributed
+    to its own source(s). Invariants beyond these types — >= 2 positions, every
+    source known, no source on two sides — are enforced in
+    `app.services.validation`.
+    """
+
+    topic: str
+    positions: list[ContradictionPosition]
 
 
 class ScribeReport(BaseModel):

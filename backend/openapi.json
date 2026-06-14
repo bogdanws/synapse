@@ -825,9 +825,31 @@
       },
       "Contradiction": {
         "properties": {
-          "description": {
+          "topic": {
             "type": "string",
-            "title": "Description"
+            "title": "Topic"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/ContradictionPosition"
+            },
+            "type": "array",
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic",
+          "positions"
+        ],
+        "title": "Contradiction",
+        "description": "A factual disagreement between sources, decomposed into opposing sides.\n\n`topic` names the dimension under dispute (e.g. \"First commercial operation\ndate\"); `positions` holds the >= 2 mutually exclusive sides, each attributed\nto its own source(s). Invariants beyond these types \u2014 >= 2 positions, every\nsource known, no source on two sides \u2014 are enforced in\n`app.services.validation`."
+      },
+      "ContradictionPosition": {
+        "properties": {
+          "statement": {
+            "type": "string",
+            "title": "Statement"
           },
           "source_ids": {
             "items": {
@@ -839,10 +861,11 @@
         },
         "type": "object",
         "required": [
-          "description",
+          "statement",
           "source_ids"
         ],
-        "title": "Contradiction"
+        "title": "ContradictionPosition",
+        "description": "One side of a disagreement: a statement and the sources that hold it.\n\nAttributing the statement to its source(s) is the whole point \u2014 a flat list\nof `source_ids` per contradiction can't tell the reader which source claims\nwhat. `source_ids` lists the sources advancing this position (>= 1)."
       },
       "CriticAnnotations": {
         "properties": {
