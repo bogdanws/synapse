@@ -207,6 +207,42 @@ def test_rejects_ref_without_caret_to_unknown_source() -> None:
         validate_scribe_report(_report([section]))
 
 
+def test_rejects_citation_outside_claim_span() -> None:
+    """A `[^sX]` that is not wrapped in a claim span is unverifiable by the Critic.
+
+    Regression for a report whose Scribe model emitted bare footnotes for every
+    sentence and wrapped none of them, yielding a report with zero claims.
+    """
+    section = _section(
+        "sec1",
+        body_md=(
+            'Wrapped <span data-claim="sec1.c1">claim[^s1]</span>. '
+            "But this fact is cited outside any span[^s2]."
+        ),
+    )
+    with pytest.raises(ScribeValidationError, match="outside a <span data-claim> span"):
+        validate_scribe_report(_report([section]))
+
+
+def test_rejects_section_with_only_orphan_citations() -> None:
+    """The exact failure mode seen in production: prose with citations, no spans."""
+    section = _section(
+        "sec1",
+        body_md="DeepSeek V4 Pro was released under an MIT license[^s1][^s2].",
+    )
+    with pytest.raises(ScribeValidationError, match="outside a <span data-claim> span"):
+        validate_scribe_report(_report([section]))
+
+
+def test_accepts_footnote_definition_outside_span() -> None:
+    """A definition line (`[^sX]: …`) is bibliography-like, not an in-prose claim."""
+    section = _section(
+        "sec1",
+        body_md=('<span data-claim="sec1.c1">claim[^s1]</span>\n\n[^s1]: Source one.\n'),
+    )
+    validate_scribe_report(_report([section]))
+
+
 # ---- critic validation -----------------------------------------------------
 
 

@@ -137,6 +137,29 @@ async def test_verify_section_returns_parsed_output(respx_mock: respx.MockRouter
 
 
 @pytest.mark.respx(base_url=OPENROUTER_BASE_URL)
+async def test_verify_section_skips_llm_for_section_without_claims(
+    respx_mock: respx.MockRouter,
+) -> None:
+    """A section with no `<span data-claim>` has nothing to verify.
+
+    The agent must short-circuit rather than call the model, which previously
+    invented flags for non-existent claims and failed validation as
+    "unknown claim_flags".
+    """
+    agent = CriticAgent(model="test/model")
+    output = await agent.verify_section(
+        topic="t",
+        section=_section("sec4", claim_count=0),
+        sources=[_source("s1")],
+    )
+    # No route is registered: any HTTP call would raise. Belt-and-braces, assert
+    # the mock router saw zero requests.
+    assert respx_mock.calls.call_count == 0
+    assert output.section_confidence.section_id == "sec4"
+    assert output.claim_flags == []
+
+
+@pytest.mark.respx(base_url=OPENROUTER_BASE_URL)
 async def test_verify_section_retries_on_missing_claim_flag(
     respx_mock: respx.MockRouter,
 ) -> None:

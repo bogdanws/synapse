@@ -66,6 +66,8 @@ Body rules (mandatory — most failures come from skipping these)
 
        <span data-claim="<section_id>.c<n>">...claim text [^sX]...</span>
 
+   Be thorough: most substantive sections should contain at least one such claim. Prefer concrete, sourced statements over vague generalities, and wrap each one. A section with zero claims is only appropriate when it is genuinely non-factual (e.g. a short framing or transition).
+
 2. The `section_id` prefix MUST match the section's own `id`.
 3. Claim suffixes start at `c1` and increment by one within each section (`c1`, `c2`, `c3`, ...) — no gaps, no duplicates.
 4. Every citation `[^sX]` MUST appear inside one of these spans. Use the exact short id from the input source list; never invent a new id.

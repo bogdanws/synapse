@@ -10,6 +10,10 @@ Pydantic catches type errors for free. These validators enforce the cross-field 
     the report — the only direction that catches genuine hallucination
     (referencing a source that does not exist) rather than redundant data
     the model could be asked to maintain.
+  * Every footnote reference sits *inside* a `<span data-claim>` span. A citation
+    outside any claim span is an "orphan" the Critic can never attach a verdict
+    to, so the whole section ends up unverifiable. Catching it here turns a
+    silently claim-less report into an actionable retry for the Scribe.
 
 `ReportSection.cited_source_ids` is intentionally not validated here: it is derived from `body_md` by a model_validator on the section itself, so it cannot disagree with the prose.
 
@@ -32,8 +36,15 @@ _CLAIM_SPAN_RE = re.compile(
     r"<span\b[^>]*\bdata-claim\s*=\s*['\"]([^'\"]+)['\"][^>]*>",
     re.IGNORECASE,
 )
+# Whole `<span data-claim="…">…</span>` blocks, including the wrapped text. Used to subtract claim regions from the body so we can spot footnote refs left outside any span. Non-greedy so adjacent spans don't merge; DOTALL so a span may wrap text spanning newlines.
+_CLAIM_SPAN_BLOCK_RE = re.compile(
+    r"<span\b[^>]*\bdata-claim\s*=\s*['\"][^'\"]+['\"][^>]*>.*?</span>",
+    re.IGNORECASE | re.DOTALL,
+)
 # Footnote references like `[^s12]`; `[s12]` is accepted because models sometimes omit the caret. Markdown footnote definitions look the same followed by a colon (`[^s12]:`); we treat both as references for the purpose of "does this id appear in the body".
 _FOOTNOTE_REF_RE = re.compile(r"\[\^?(s\d+)\]")
+# A footnote *reference* in prose, distinct from a definition (`[^s12]:`). Only references must live inside claim spans; a definition — if a model ever emits one — is bibliography-like and legitimately sits outside spans, so the orphan check ignores it via the trailing-colon negative lookahead.
+_FOOTNOTE_REF_IN_PROSE_RE = re.compile(r"\[\^?(s\d+)\](?!\s*:)")
 _SECTION_ID_RE = re.compile(r"^sec(\d+)$")
 _CLAIM_LOCAL_RE = re.compile(r"^c(\d+)$")
 
@@ -155,6 +166,15 @@ def _validate_footnote_refs(section: ReportSection, source_ids: set[str]) -> Non
     unknown = refs - source_ids
     if unknown:
         msg = f"section {section.id}: footnote refs {sorted(unknown)} do not match any Source.id"
+        raise ScribeValidationError(msg)
+
+    outside_spans = _CLAIM_SPAN_BLOCK_RE.sub("", section.body_md)
+    orphans = sorted(set(_FOOTNOTE_REF_IN_PROSE_RE.findall(outside_spans)))
+    if orphans:
+        msg = (
+            f"section {section.id}: footnote refs {orphans} appear outside a "
+            f"<span data-claim> span; wrap each cited claim in a span"
+        )
         raise ScribeValidationError(msg)
 
 

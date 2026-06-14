@@ -67,6 +67,32 @@ Constraints:
 - Output strictly valid JSON — no commentary, no markdown fences.
 - Cover every claim id present in the section. No extras, no duplicates.
 - Only cite source ids that appear in the input list.
+
+Worked example for a section `sec2` containing two claims (note `unsupported` carries an empty `supporting_source_ids`):
+
+    {
+      "section_confidence": {
+        "section_id": "sec2",
+        "score": 0.62,
+        "reasoning": "The growth figure is well supported; the causal attribution is not corroborated by the cited source."
+      },
+      "claim_flags": [
+        {
+          "claim_id": "sec2.c1",
+          "section_id": "sec2",
+          "verdict": "supported",
+          "rationale": "Source s2 reports the same 12% YoY figure.",
+          "supporting_source_ids": ["s2"]
+        },
+        {
+          "claim_id": "sec2.c2",
+          "section_id": "sec2",
+          "verdict": "unsupported",
+          "rationale": "No cited source attributes the growth to pricing changes.",
+          "supporting_source_ids": []
+        }
+      ]
+    }
 """
 
 
@@ -92,6 +118,17 @@ class CriticAgent:
 
         Routed through `invoke_structured_with_retry`, which replays the model's previous (invalid) JSON as an assistant turn on retry so the model can edit its mistake instead of regenerating from scratch.
         """
+        # A section with no claim spans has nothing to fact-check. Skip the LLM call entirely: it saves a request and removes the opportunity for the model to hallucinate flags for claims that don't exist (which the validator would reject as "unknown claim_flags").
+        if not _CLAIM_SPAN_RE.search(section.body_md):
+            return _CriticSectionOutput(
+                section_confidence=SectionConfidence(
+                    section_id=section.id,
+                    score=1.0,
+                    reasoning="Section contains no verifiable claims.",
+                ),
+                claim_flags=[],
+            )
+
         source_ids = {s.id for s in sources}
         chat = build_chat_model(self.model).with_structured_output(
             _CriticSectionOutput,
