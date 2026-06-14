@@ -19,6 +19,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ReportPage from './pages/ReportPage'
 import ResearchInputPage from './pages/ResearchInputPage'
+import SampleReportPage from './pages/SampleReportPage'
 import ResearchPreviewPage from './pages/ResearchPreviewPage'
 import { previewStateSchema } from './pages/researchPreviewState'
 
@@ -73,6 +74,14 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: LandingPage,
+})
+
+// Public showcase of a finished report. No auth guard: it renders a static
+// fixture and is the destination of the landing page's "Read a sample report".
+const sampleReportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sample-report',
+  component: SampleReportPage,
 })
 
 const loginRoute = createRoute({
@@ -163,6 +172,7 @@ const followUpRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  sampleReportRoute,
   loginRoute,
   registerRoute,
   researchNewRoute,
