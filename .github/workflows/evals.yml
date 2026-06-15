@@ -9,6 +9,22 @@ on:
         description: 'Which agent to eval (scout / scribe / critic / all)'
         required: false
         default: 'all'
+      judge_model:
+        description: 'OpenRouter model id for the LLM judge (empty = harness default openai/gpt-5.1)'
+        required: false
+        default: ''
+      scout_models:
+        description: 'Comma-separated Scout candidate models (empty = harness default)'
+        required: false
+        default: ''
+      scribe_models:
+        description: 'Comma-separated Scribe candidate models (empty = harness default)'
+        required: false
+        default: ''
+      critic_models:
+        description: 'Comma-separated Critic candidate models (empty = harness default)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -38,10 +54,22 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          EVAL_JUDGE_MODEL: ${{ github.event.inputs.judge_model }}
+          EVAL_SCOUT_MODELS: ${{ github.event.inputs.scout_models }}
+          EVAL_SCRIBE_MODELS: ${{ github.event.inputs.scribe_models }}
+          EVAL_CRITIC_MODELS: ${{ github.event.inputs.critic_models }}
         run: |
           AGENT="${{ github.event.inputs.agent }}"
           if [ "$AGENT" = "all" ] || [ -z "$AGENT" ]; then
-            uv run pytest tests/evals/ -m agent_eval
+            uv run pytest tests/evals/ -m agent_eval -s
           else
-            uv run pytest tests/evals/ -m agent_eval -k "$AGENT"
+            uv run pytest tests/evals/ -m agent_eval -k "$AGENT" -s
           fi
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: backend/tests/evals/results/
+          if-no-files-found: ignore

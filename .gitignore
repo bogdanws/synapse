@@ -54,3 +54,7 @@ pnpm-debug.log*
 # ---- Misc ----
 *.tmp
 .cache/
+
+# ---- Eval run artifacts (results dir is tracked; generated files inside it are not) ----
+backend/tests/evals/results/*.json
+backend/tests/evals/results/*.md

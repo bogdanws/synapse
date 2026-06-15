@@ -1,14 +1,128 @@
 # Agent Evals
 
 LLM-as-judge evaluations for Scout, Scribe, and Critic. Slow, non-deterministic,
-require API keys. Excluded from default `pytest` runs (see `pyproject.toml`'s
-`addopts = "-m 'not agent_eval'"`).
+require real API keys. Excluded from default `pytest` runs; run on demand or via
+the **Agent Evals** GitHub Actions workflow (`workflow_dispatch`).
 
-Run on demand:
+## Quick start
 
 ```bash
-uv run pytest tests/evals/ -m agent_eval
-uv run pytest tests/evals/ -m agent_eval -k scout
+cd backend
+export OPENROUTER_API_KEY=...   # required: agent + judge calls
+export EXA_API_KEY=...          # required for Scout only
+
+# Smoke-run Scribe with one cheap model and two cases (~5 judge calls, < $0.01):
+export EVAL_JUDGE_MODEL=openai/gpt-4o-mini
+export EVAL_SCRIBE_MODELS=openai/gpt-4o-mini
+uv run pytest tests/evals/ -m agent_eval -k scribe -s
+
+# Full model bake-off (real cost — run intentionally):
+export EVAL_SCRIBE_MODELS="openai/gpt-4o-mini,openai/gpt-5.1,anthropic/claude-3.5-sonnet"
+uv run pytest tests/evals/ -m agent_eval -k scribe -s
 ```
 
-Each test must be marked `@pytest.mark.agent_eval`.
+After a run, `tests/evals/results/` contains:
+- `<UTC-timestamp>.json` — every raw metric row
+- `<UTC-timestamp>.md` — leaderboard table per agent
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `EVAL_JUDGE_MODEL` | `openai/gpt-5.1` | OpenRouter model id for the LLM judge |
+| `EVAL_SCOUT_MODELS` | `openai/gpt-4o-mini` | Comma-separated candidate models for Scout |
+| `EVAL_SCRIBE_MODELS` | `openai/gpt-4o-mini` | Comma-separated candidate models for Scribe |
+| `EVAL_CRITIC_MODELS` | `openai/gpt-4o-mini` | Comma-separated candidate models for Critic |
+
+**Judge model choice:** use a model at least as capable as the agents under
+test. `gpt-5.1` (default) is a strong reasoner at moderate cost. Never use
+the same model as both judge and candidate — the harness warns when it detects
+this to guard against self-preference bias.
+
+**Cost:** defaults are one cheap model × 2 cases. A full default run is a
+handful of API calls. Cost scales with `(#candidate models) × (#cases)`;
+multiply by ~3 judge calls per Scribe case and ~1 per Critic case.
+
+## Fixture formats
+
+### `data/scout_topics.json`
+
+Array of topics with human-curated reference sources. The `curated_recall`
+metric counts how many curated source domains Scout rediscovers.
+
+```json
+[
+  {
+    "id": "short_snake_case_id",
+    "topic": "Full research topic string",
+    "curated_sources": [
+      {"url": "https://...", "title": "...", "tier": "high|medium|low"}
+    ],
+    "notes": "curator, date, rationale"
+  }
+]
+```
+
+`tier` midpoints for calibration: `high=0.85`, `medium=0.55`, `low=0.30`.
+
+### `data/scribe_cases.json`
+
+Array of fixed-input cases (topic + sub-questions + pre-fetched sources).
+`snippet` must contain enough verifiable fact for the factual-accuracy judge.
+
+```json
+[
+  {
+    "id": "short_snake_case_id",
+    "topic": "...",
+    "sub_questions": ["...", "..."],
+    "sources": [
+      {
+        "id": "s1", "url": "https://...", "title": "...",
+        "author": null, "published_at": null,
+        "credibility": 0.9, "relevance": 0.9,
+        "snippet": "verifiable factual sentence(s)"
+      }
+    ]
+  }
+]
+```
+
+### `data/critic_cases.json`
+
+Array of pre-written reports with labeled claims. `"false"` labels are
+inserted falsehoods the Critic should flag; `"supported"` labels are claims
+the cited source actually supports.
+
+The fixture must satisfy `validate_scribe_report()`:
+- Section ids are `sec1`, `sec2`, ... sequential.
+- Claim ids within each section are `secN.c1`, `secN.c2`, ... sequential.
+- Every `[^sX]` footnote reference sits inside a `<span data-claim>` span.
+- Every `sX` reference resolves to a source in the `sources` array.
+
+```json
+[
+  {
+    "id": "short_snake_case_id",
+    "topic": "...", "title": "...", "summary_md": "...",
+    "sources": [{"id": "s1", "url": "https://...", "title": "...",
+                 "credibility": 0.9, "relevance": 0.9, "snippet": "..."}],
+    "sections": [
+      {"id": "sec1", "heading": "...",
+       "body_md": "Text <span data-claim=\"sec1.c1\">claim[^s1]</span>."}
+    ],
+    "labels": {"sec1.c1": "supported"},
+    "contradictions": [],
+    "follow_ups": []
+  }
+]
+```
+
+## CI / GitHub Actions
+
+Trigger via **Actions → Agent Evals → Run workflow**. Optional inputs:
+- `agent`: `scout` / `scribe` / `critic` / `all` (default `all`)
+- `judge_model`, `scout_models`, `scribe_models`, `critic_models`: override defaults
+
+The workflow uploads `tests/evals/results/` as an artifact named `eval-results`;
+download it from the run summary page to inspect leaderboard tables and raw rows.
