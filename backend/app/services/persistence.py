@@ -119,6 +119,21 @@ class JobRepository:
         stmt = select(orm.FollowUp.parent_job_id).where(orm.FollowUp.child_job_id == child_job_id)
         return (await self._session.execute(stmt)).scalars().first()
 
+    async def get_follow_up_depth(self, job_id: UUID, *, limit: int) -> int:
+        """Count follow-up ancestors above `job_id` (0 for a root), stopping once `limit` is reached.
+
+        Walks parent edges one indexed point-lookup at a time. The caller only needs to know whether a new child would exceed a depth cap, so the walk short-circuits at `limit` rather than resolving the full chain — and that bound doubles as a guard against a pathological cycle (which shouldn't exist: a child is always created after its parent).
+        """
+        depth = 0
+        current = job_id
+        while depth < limit:
+            parent = await self.get_follow_up_parent_id(current)
+            if parent is None:
+                break
+            depth += 1
+            current = parent
+        return depth
+
     async def get_lineage(self, job_id: UUID, *, user_id: UUID | None = None) -> JobLineage:
         """Resolve a job's immediate follow-up lineage: its parent (if any) and its children.
 

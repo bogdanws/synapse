@@ -31,6 +31,12 @@ from app.tasks.research import run_research_pipeline
 
 router = APIRouter(dependencies=[Depends(current_active_user)])
 
+# Longest follow-up chain we allow (root -> child -> ... ). Each generation reuses
+# the previous one's sources, so an unbounded chain is both a cost and a
+# coherence risk; cap it and surface the limit as a 409 rather than silently
+# spawning ever-deeper threads.
+_MAX_FOLLOW_UP_DEPTH = 5
+
 
 @router.post(
     "/research",
@@ -131,7 +137,7 @@ async def start_follow_up(
 ) -> ResearchJob:
     """Spawn a child research job that follows up on a completed report.
 
-    The child inherits the parent's language, depth, and per-agent models, and its single sub-question is the follow-up question — so the worker skips Scout's decompose step. The orchestrator separately seeds the child with the parent's sources (resolved via the FollowUp edge written here), so the run reuses the parent's evidence on top of a fresh, question-scoped search.
+    The child inherits the parent's language, depth, and per-agent models, and its single sub-question is the follow-up question — so the worker skips Scout's decompose step. The orchestrator separately seeds the child with the parent's sources (resolved via the FollowUp edge written here), so the run reuses the parent's evidence on top of a fresh, question-scoped search. Follow-up chains are capped at `_MAX_FOLLOW_UP_DEPTH`.
     """
     repo = JobRepository(session)
     try:
@@ -143,6 +149,12 @@ async def start_follow_up(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Only a completed report can be followed up.",
+        )
+
+    if await repo.get_follow_up_depth(job_id, limit=_MAX_FOLLOW_UP_DEPTH) >= _MAX_FOLLOW_UP_DEPTH:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Follow-up chains are limited to {_MAX_FOLLOW_UP_DEPTH} levels.",
         )
 
     now = datetime.now(UTC)
@@ -158,11 +170,12 @@ async def start_follow_up(
         created_at=now,
         updated_at=now,
     )
+    # The child job and its parent edge must land atomically: a child without the
+    # edge would run as a fresh root job (no parent sources) and orphan itself from
+    # the lineage. `flush` assigns `child.id` so the edge can reference it; the
+    # single `commit` makes both rows visible together.
     session.add(child)
-    await session.commit()
-    await session.refresh(child)
-
-    # The FollowUp edge is what makes the orchestrator treat this as a child and seed it with the parent's sources, so it must be committed before the task runs.
+    await session.flush()
     session.add(
         orm.FollowUp(parent_job_id=job_id, child_job_id=child.id, question=payload.question)
     )
@@ -170,18 +183,7 @@ async def start_follow_up(
 
     await run_research_pipeline.kiq(child.id)
 
-    return ResearchJob(
-        id=child.id,
-        topic=child.topic,
-        language=child.language,
-        depth=parent.depth,
-        models=child.models,
-        sub_questions=child.sub_questions_override,
-        status=JobStatus(child.status),
-        progress=child.progress,
-        created_at=child.created_at,
-        updated_at=child.updated_at,
-    )
+    return await repo.get_job(child.id, user_id=user.id)
 
 
 @router.get(

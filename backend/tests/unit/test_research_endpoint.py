@@ -12,9 +12,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.agents.scout import ScoutValidationError
+from app.api.routes import _MAX_FOLLOW_UP_DEPTH
 from app.auth.dependencies import current_active_user
 from app.db.session import get_db
 from app.main import app
+from app.middleware.ratelimit import limiter
 from app.models import orm
 from app.models.research import (
     ClaimFlag,
@@ -57,10 +59,20 @@ class _FakeSession:
     async def commit(self) -> None:
         self.commits += 1
 
+    async def flush(self) -> None:
+        # Real SQLAlchemy assigns the python-side `default=uuid4` id here, which
+        # the follow-up route needs before it can write the edge referencing it.
+        for obj in self.added:
+            self._stamp(obj)
+
     async def refresh(self, obj: Any) -> None:
-        # Real SQLAlchemy populates the server-default columns at this point;
-        # the route only reads `id`, `topic`, `language`, `models`, `status`,
-        # `progress`, `created_at`, `updated_at` afterwards, so stamp those.
+        self._stamp(obj)
+
+    @staticmethod
+    def _stamp(obj: Any) -> None:
+        # Real SQLAlchemy populates the server-default columns here; the route
+        # only reads `id`, `topic`, `language`, `models`, `status`, `progress`,
+        # `created_at`, `updated_at` afterwards, so stamp those.
         if isinstance(obj, orm.ResearchJob):
             if obj.id is None:
                 obj.id = uuid4()
@@ -69,6 +81,13 @@ class _FakeSession:
                 obj.created_at = now
             if obj.updated_at is None:
                 obj.updated_at = now
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    # The follow-up endpoint is rate-limited; without a per-test reset the limiter's
+    # in-memory counter bleeds across tests and trips later cases non-deterministically.
+    limiter.reset()
 
 
 @pytest.fixture
@@ -455,10 +474,26 @@ async def test_follow_up_requires_auth(client: AsyncClient) -> None:
 async def test_follow_up_creates_child_inheriting_parent_settings(
     authed_client: AsyncClient, fake_session: _FakeSession
 ) -> None:
+    # First get_job resolves the parent; the second reads the freshly-created child
+    # back for the response (the route returns the persisted view, not a hand-rolled one).
+    child_view = ResearchJob(
+        id=uuid4(),
+        topic="What about X?",
+        language="ro",
+        depth=Depth.DEEP,
+        models=_VALID_MODELS,
+        sub_questions=["What about X?"],
+        status=JobStatus.PENDING,
+        progress=0.0,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
     with (
         patch(
-            "app.api.routes.JobRepository.get_job", new=AsyncMock(return_value=_completed_parent())
+            "app.api.routes.JobRepository.get_job",
+            new=AsyncMock(side_effect=[_completed_parent(), child_view]),
         ),
+        patch("app.api.routes.JobRepository.get_follow_up_depth", new=AsyncMock(return_value=0)),
         patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()) as kiq,
     ):
         response = await authed_client.post(
@@ -467,23 +502,48 @@ async def test_follow_up_creates_child_inheriting_parent_settings(
 
     assert response.status_code == 202
     body = response.json()
-    # Child is scoped to the question but inherits language/depth/models from the parent.
     assert body["topic"] == "What about X?"
     assert body["status"] == "pending"
-    assert body["language"] == "ro"
-    assert body["depth"] == "deep"
-    assert body["models"] == _VALID_MODELS
-    # The question seeds the override list so the worker skips Scout's decompose.
     assert body["sub_questions"] == ["What about X?"]
 
-    # Child row committed first (to mint its id), then the FollowUp edge.
-    assert fake_session.commits == 2
+    # The child row and its FollowUp edge land in a single transaction.
+    assert fake_session.commits == 1
     child = next(o for o in fake_session.added if isinstance(o, orm.ResearchJob))
     edge = next(o for o in fake_session.added if isinstance(o, orm.FollowUp))
+    # The orm child inherits the parent's settings and is scoped to the question.
+    assert child.language == "ro"
+    assert child.depth == Depth.DEEP.value
+    assert child.models == _VALID_MODELS
+    assert child.sub_questions_override == ["What about X?"]
     assert edge.parent_job_id == _JOB_ID
     assert edge.child_job_id == child.id
     assert edge.question == "What about X?"
     kiq.assert_awaited_once_with(child.id)
+
+
+async def test_follow_up_rejects_chain_past_depth_limit(
+    authed_client: AsyncClient, fake_session: _FakeSession
+) -> None:
+    with (
+        patch(
+            "app.api.routes.JobRepository.get_job", new=AsyncMock(return_value=_completed_parent())
+        ),
+        patch(
+            "app.api.routes.JobRepository.get_follow_up_depth",
+            new=AsyncMock(return_value=_MAX_FOLLOW_UP_DEPTH),
+        ),
+        patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()) as kiq,
+    ):
+        response = await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+
+    assert response.status_code == 409
+    assert str(_MAX_FOLLOW_UP_DEPTH) in response.json()["detail"]
+    # Nothing is persisted and no work is enqueued when the chain is too deep.
+    assert fake_session.commits == 0
+    assert fake_session.added == []
+    kiq.assert_not_awaited()
 
 
 async def test_follow_up_rejects_incomplete_parent(authed_client: AsyncClient) -> None:
@@ -523,12 +583,15 @@ async def test_follow_up_scopes_parent_lookup_to_user(authed_client: AsyncClient
     mock = AsyncMock(return_value=_completed_parent())
     with (
         patch("app.api.routes.JobRepository.get_job", new=mock),
+        patch("app.api.routes.JobRepository.get_follow_up_depth", new=AsyncMock(return_value=0)),
         patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()),
     ):
         await authed_client.post(
             f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
         )
-    _, kwargs = mock.await_args
+    # The parent lookup (first call) is scoped to the authenticated user.
+    args, kwargs = mock.await_args_list[0]
+    assert args[0] == _JOB_ID
     assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)
 
 

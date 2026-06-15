@@ -101,3 +101,28 @@ async def test_get_follow_up_parent_id(async_session: AsyncSession) -> None:
     repo = JobRepository(async_session)
     assert await repo.get_follow_up_parent_id(child.id) == parent.id
     assert await repo.get_follow_up_parent_id(standalone.id) is None
+
+
+async def test_get_follow_up_depth_counts_ancestors_and_short_circuits(
+    async_session: AsyncSession,
+) -> None:
+    user = await _user(async_session)
+    # A four-deep chain: root -> a -> b -> c.
+    root, a, b, c = (_job(user.id, t) for t in ("root", "a", "b", "c"))
+    async_session.add_all([root, a, b, c])
+    await async_session.flush()
+    async_session.add_all(
+        [
+            FollowUp(parent_job_id=root.id, child_job_id=a.id, question="qa"),
+            FollowUp(parent_job_id=a.id, child_job_id=b.id, question="qb"),
+            FollowUp(parent_job_id=b.id, child_job_id=c.id, question="qc"),
+        ]
+    )
+    await async_session.commit()
+
+    repo = JobRepository(async_session)
+    assert await repo.get_follow_up_depth(root.id, limit=10) == 0
+    assert await repo.get_follow_up_depth(a.id, limit=10) == 1
+    assert await repo.get_follow_up_depth(c.id, limit=10) == 3
+    # The walk stops once `limit` is reached rather than resolving the full chain.
+    assert await repo.get_follow_up_depth(c.id, limit=2) == 2
