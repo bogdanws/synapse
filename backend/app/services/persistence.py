@@ -22,6 +22,8 @@ from app.models.research import (
     ClaimFlag,
     Contradiction,
     CriticAnnotations,
+    FollowUpLink,
+    JobLineage,
     JobListResponse,
     JobStatus,
     JobSummary,
@@ -169,6 +171,60 @@ class JobRepository:
         ]
         return JobListResponse(items=items, total=total, limit=limit, offset=offset)
 
+    async def get_follow_up_parent_id(self, child_job_id: UUID) -> UUID | None:
+        """Return the parent job id if `child_job_id` was spawned as a follow-up, else None.
+
+        Used by the orchestrator to decide whether to seed Scout with the parent's sources. A job has at most one parent edge.
+        """
+        stmt = select(orm.FollowUp.parent_job_id).where(orm.FollowUp.child_job_id == child_job_id)
+        return (await self._session.execute(stmt)).scalars().first()
+
+    async def get_follow_up_depth(self, job_id: UUID, *, limit: int) -> int:
+        """Count follow-up ancestors above `job_id` (0 for a root), stopping once `limit` is reached.
+
+        Walks parent edges one indexed point-lookup at a time. The caller only needs to know whether a new child would exceed a depth cap, so the walk short-circuits at `limit` rather than resolving the full chain — and that bound doubles as a guard against a pathological cycle (which shouldn't exist: a child is always created after its parent).
+        """
+        depth = 0
+        current = job_id
+        while depth < limit:
+            parent = await self.get_follow_up_parent_id(current)
+            if parent is None:
+                break
+            depth += 1
+            current = parent
+        return depth
+
+    async def get_lineage(self, job_id: UUID, *, user_id: UUID | None = None) -> JobLineage:
+        """Resolve a job's immediate follow-up lineage: its parent (if any) and its children.
+
+        Ownership is enforced on the anchor job only; the linked jobs always belong to the same user because a follow-up inherits the parent's owner. When `user_id` is supplied a job owned by someone else surfaces as `JobNotFoundError` rather than leaking existence.
+        """
+        owner_stmt = select(orm.ResearchJob.id).where(orm.ResearchJob.id == job_id)
+        if user_id is not None:
+            owner_stmt = owner_stmt.where(orm.ResearchJob.user_id == user_id)
+        if (await self._session.execute(owner_stmt)).scalar_one_or_none() is None:
+            msg = f"research job {job_id} not found"
+            raise JobNotFoundError(msg)
+
+        parent_stmt = (
+            select(orm.FollowUp, orm.ResearchJob)
+            .join(orm.ResearchJob, orm.ResearchJob.id == orm.FollowUp.parent_job_id)
+            .where(orm.FollowUp.child_job_id == job_id)
+        )
+        parent_row = (await self._session.execute(parent_stmt)).first()
+        parent = _to_follow_up_link(parent_row[1], parent_row[0]) if parent_row else None
+
+        children_stmt = (
+            select(orm.FollowUp, orm.ResearchJob)
+            .join(orm.ResearchJob, orm.ResearchJob.id == orm.FollowUp.child_job_id)
+            .where(orm.FollowUp.parent_job_id == job_id)
+            .order_by(orm.FollowUp.created_at)
+        )
+        children_rows = (await self._session.execute(children_stmt)).all()
+        children = [_to_follow_up_link(job, fu) for fu, job in children_rows]
+
+        return JobLineage(parent=parent, children=children)
+
     async def set_status(
         self,
         job_id: UUID,
@@ -276,6 +332,20 @@ def _to_research_job(row: orm.ResearchJob) -> ResearchJobModel:
         created_at=row.created_at,
         updated_at=row.updated_at,
         completed_at=row.completed_at,
+    )
+
+
+def _to_follow_up_link(job_row: orm.ResearchJob, fu_row: orm.FollowUp) -> FollowUpLink:
+    """Build a `FollowUpLink` describing the job on one end of a follow-up edge.
+
+    `job_row` is the linked job (parent or child); `fu_row` carries the question and edge timestamp.
+    """
+    return FollowUpLink(
+        job_id=job_row.id,
+        question=fu_row.question,
+        topic=job_row.topic,
+        status=JobStatus(job_row.status),
+        created_at=fu_row.created_at,
     )
 
 

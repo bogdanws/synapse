@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AuthCookieLoginApiAuthLoginPostData, AuthCookieLoginApiAuthLoginPostErrors, AuthCookieLoginApiAuthLoginPostResponses, AuthCookieLogoutApiAuthLogoutPostData, AuthCookieLogoutApiAuthLogoutPostErrors, AuthCookieLogoutApiAuthLogoutPostResponses, DeleteResearchApiResearchJobIdDeleteData, DeleteResearchApiResearchJobIdDeleteErrors, DeleteResearchApiResearchJobIdDeleteResponses, ExportMarkdownApiResearchJobIdExportMarkdownGetData, ExportMarkdownApiResearchJobIdExportMarkdownGetErrors, ExportMarkdownApiResearchJobIdExportMarkdownGetResponses, ExportPdfApiResearchJobIdExportPdfGetData, ExportPdfApiResearchJobIdExportPdfGetErrors, ExportPdfApiResearchJobIdExportPdfGetResponses, GetReportApiResearchJobIdReportGetData, GetReportApiResearchJobIdReportGetErrors, GetReportApiResearchJobIdReportGetResponses, HealthHealthGetData, HealthHealthGetResponses, ListResearchApiResearchGetData, ListResearchApiResearchGetErrors, ListResearchApiResearchGetResponses, PreviewResearchApiResearchPreviewPostData, PreviewResearchApiResearchPreviewPostErrors, PreviewResearchApiResearchPreviewPostResponses, RegisterRegisterApiAuthRegisterPostData, RegisterRegisterApiAuthRegisterPostErrors, RegisterRegisterApiAuthRegisterPostResponses, StartResearchApiResearchPostData, StartResearchApiResearchPostErrors, StartResearchApiResearchPostResponses, UsersCurrentUserApiAuthUsersMeGetData, UsersCurrentUserApiAuthUsersMeGetErrors, UsersCurrentUserApiAuthUsersMeGetResponses, UsersDeleteUserApiAuthUsersIdDeleteData, UsersDeleteUserApiAuthUsersIdDeleteErrors, UsersDeleteUserApiAuthUsersIdDeleteResponses, UsersPatchCurrentUserApiAuthUsersMePatchData, UsersPatchCurrentUserApiAuthUsersMePatchErrors, UsersPatchCurrentUserApiAuthUsersMePatchResponses, UsersPatchUserApiAuthUsersIdPatchData, UsersPatchUserApiAuthUsersIdPatchErrors, UsersPatchUserApiAuthUsersIdPatchResponses, UsersUserApiAuthUsersIdGetData, UsersUserApiAuthUsersIdGetErrors, UsersUserApiAuthUsersIdGetResponses } from './types.gen';
+import type { AuthCookieLoginApiAuthLoginPostData, AuthCookieLoginApiAuthLoginPostErrors, AuthCookieLoginApiAuthLoginPostResponses, AuthCookieLogoutApiAuthLogoutPostData, AuthCookieLogoutApiAuthLogoutPostErrors, AuthCookieLogoutApiAuthLogoutPostResponses, DeleteResearchApiResearchJobIdDeleteData, DeleteResearchApiResearchJobIdDeleteErrors, DeleteResearchApiResearchJobIdDeleteResponses, ExportMarkdownApiResearchJobIdExportMarkdownGetData, ExportMarkdownApiResearchJobIdExportMarkdownGetErrors, ExportMarkdownApiResearchJobIdExportMarkdownGetResponses, ExportPdfApiResearchJobIdExportPdfGetData, ExportPdfApiResearchJobIdExportPdfGetErrors, ExportPdfApiResearchJobIdExportPdfGetResponses, GetJobLineageApiResearchJobIdLineageGetData, GetJobLineageApiResearchJobIdLineageGetErrors, GetJobLineageApiResearchJobIdLineageGetResponses, GetReportApiResearchJobIdReportGetData, GetReportApiResearchJobIdReportGetErrors, GetReportApiResearchJobIdReportGetResponses, HealthHealthGetData, HealthHealthGetResponses, ListResearchApiResearchGetData, ListResearchApiResearchGetErrors, ListResearchApiResearchGetResponses, PreviewResearchApiResearchPreviewPostData, PreviewResearchApiResearchPreviewPostErrors, PreviewResearchApiResearchPreviewPostResponses, RegisterRegisterApiAuthRegisterPostData, RegisterRegisterApiAuthRegisterPostErrors, RegisterRegisterApiAuthRegisterPostResponses, StartFollowUpApiResearchJobIdFollowUpPostData, StartFollowUpApiResearchJobIdFollowUpPostErrors, StartFollowUpApiResearchJobIdFollowUpPostResponses, StartResearchApiResearchPostData, StartResearchApiResearchPostErrors, StartResearchApiResearchPostResponses, UsersCurrentUserApiAuthUsersMeGetData, UsersCurrentUserApiAuthUsersMeGetErrors, UsersCurrentUserApiAuthUsersMeGetResponses, UsersDeleteUserApiAuthUsersIdDeleteData, UsersDeleteUserApiAuthUsersIdDeleteErrors, UsersDeleteUserApiAuthUsersIdDeleteResponses, UsersPatchCurrentUserApiAuthUsersMePatchData, UsersPatchCurrentUserApiAuthUsersMePatchErrors, UsersPatchCurrentUserApiAuthUsersMePatchResponses, UsersPatchUserApiAuthUsersIdPatchData, UsersPatchUserApiAuthUsersIdPatchErrors, UsersPatchUserApiAuthUsersIdPatchResponses, UsersUserApiAuthUsersIdGetData, UsersUserApiAuthUsersIdGetErrors, UsersUserApiAuthUsersIdGetResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -186,6 +186,42 @@ export const previewResearchApiResearchPreviewPost = <ThrowOnError extends boole
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Start Follow Up
+ *
+ * Spawn a child research job that follows up on a completed report.
+ *
+ * The child inherits the parent's language, depth, and per-agent models, and its single sub-question is the follow-up question — so the worker skips Scout's decompose step. The orchestrator separately seeds the child with the parent's sources (resolved via the FollowUp edge written here), so the run reuses the parent's evidence on top of a fresh, question-scoped search. Follow-up chains are capped at `_MAX_FOLLOW_UP_DEPTH`.
+ */
+export const startFollowUpApiResearchJobIdFollowUpPost = <ThrowOnError extends boolean = false>(options: Options<StartFollowUpApiResearchJobIdFollowUpPostData, ThrowOnError>) => (options.client ?? client).post<StartFollowUpApiResearchJobIdFollowUpPostResponses, StartFollowUpApiResearchJobIdFollowUpPostErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'synapse_auth',
+            type: 'apiKey'
+        }],
+    url: '/api/research/{job_id}/follow-up',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Job Lineage
+ *
+ * Return a job's immediate follow-up lineage: its parent (if any) and its children.
+ */
+export const getJobLineageApiResearchJobIdLineageGet = <ThrowOnError extends boolean = false>(options: Options<GetJobLineageApiResearchJobIdLineageGetData, ThrowOnError>) => (options.client ?? client).get<GetJobLineageApiResearchJobIdLineageGetResponses, GetJobLineageApiResearchJobIdLineageGetErrors, ThrowOnError>({
+    security: [{
+            in: 'cookie',
+            name: 'synapse_auth',
+            type: 'apiKey'
+        }],
+    url: '/api/research/{job_id}/lineage',
+    ...options
 });
 
 /**

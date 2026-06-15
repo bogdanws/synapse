@@ -16,6 +16,8 @@ from app.db.session import get_db
 from app.middleware.ratelimit import limiter
 from app.models import orm
 from app.models.research import (
+    FollowUpRequest,
+    JobLineage,
     JobListResponse,
     JobStatus,
     PreviewResponse,
@@ -29,6 +31,12 @@ from app.services.search import ExaSearchClient
 from app.tasks.research import run_research_pipeline
 
 router = APIRouter(dependencies=[Depends(current_active_user)])
+
+# Longest follow-up chain we allow (root -> child -> ... ). Each generation reuses
+# the previous one's sources, so an unbounded chain is both a cost and a
+# coherence risk; cap it and surface the limit as a 409 rather than silently
+# spawning ever-deeper threads.
+_MAX_FOLLOW_UP_DEPTH = 5
 
 
 @router.post(
@@ -128,6 +136,89 @@ async def preview_research(
                 detail="Scout could not decompose the topic into sub-questions after retries.",
             ) from exc
     return PreviewResponse(sub_questions=sub_questions)
+
+
+@router.post(
+    "/research/{job_id}/follow-up",
+    response_model=ResearchJob,
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["research"],
+)
+@limiter.limit("4/minute")
+async def start_follow_up(
+    request: Request,
+    job_id: UUID,
+    payload: FollowUpRequest,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_db),
+) -> ResearchJob:
+    """Spawn a child research job that follows up on a completed report.
+
+    The child inherits the parent's language, depth, and per-agent models, and its single sub-question is the follow-up question — so the worker skips Scout's decompose step. The orchestrator separately seeds the child with the parent's sources (resolved via the FollowUp edge written here), so the run reuses the parent's evidence on top of a fresh, question-scoped search. Follow-up chains are capped at `_MAX_FOLLOW_UP_DEPTH`.
+    """
+    repo = JobRepository(session)
+    try:
+        parent = await repo.get_job(job_id, user_id=user.id)
+    except JobNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.") from exc
+
+    if parent.status is not JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only a completed report can be followed up.",
+        )
+
+    if await repo.get_follow_up_depth(job_id, limit=_MAX_FOLLOW_UP_DEPTH) >= _MAX_FOLLOW_UP_DEPTH:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Follow-up chains are limited to {_MAX_FOLLOW_UP_DEPTH} levels.",
+        )
+
+    now = datetime.now(UTC)
+    child = orm.ResearchJob(
+        user_id=user.id,
+        topic=payload.question,
+        language=parent.language,
+        depth=parent.depth.value,
+        models=dict(parent.models),
+        sub_questions_override=[payload.question],
+        status=JobStatus.PENDING.value,
+        progress=0.0,
+        created_at=now,
+        updated_at=now,
+    )
+    # The child job and its parent edge must land atomically: a child without the
+    # edge would run as a fresh root job (no parent sources) and orphan itself from
+    # the lineage. `flush` assigns `child.id` so the edge can reference it; the
+    # single `commit` makes both rows visible together.
+    session.add(child)
+    await session.flush()
+    session.add(
+        orm.FollowUp(parent_job_id=job_id, child_job_id=child.id, question=payload.question)
+    )
+    await session.commit()
+
+    await run_research_pipeline.kiq(child.id)
+
+    return await repo.get_job(child.id, user_id=user.id)
+
+
+@router.get(
+    "/research/{job_id}/lineage",
+    response_model=JobLineage,
+    status_code=status.HTTP_200_OK,
+    tags=["research"],
+)
+async def get_job_lineage(
+    job_id: UUID,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_db),
+) -> JobLineage:
+    """Return a job's immediate follow-up lineage: its parent (if any) and its children."""
+    try:
+        return await JobRepository(session).get_lineage(job_id, user_id=user.id)
+    except JobNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.") from exc
 
 
 @router.get(

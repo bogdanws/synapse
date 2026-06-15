@@ -197,3 +197,32 @@ class PreviewResponse(BaseModel):
     """Response body for POST /api/research/preview."""
 
     sub_questions: list[str]
+
+
+class FollowUpRequest(BaseModel):
+    """Inbound body for POST /api/research/{job_id}/follow-up.
+
+    The child job inherits language, depth, and per-agent models from the parent, so the only thing the caller supplies is the new question.
+    """
+
+    question: str = Field(..., min_length=3, max_length=500)
+
+
+class FollowUpLink(BaseModel):
+    """One edge in a job's follow-up lineage.
+
+    `job_id` / `topic` / `status` describe the job on the *other* end of the edge (the parent when this link is a job's parent, a child when it is one of a job's children); `question` is the follow-up question recorded on the edge itself.
+    """
+
+    job_id: UUID
+    question: str
+    topic: str
+    status: JobStatus
+    created_at: datetime
+
+
+class JobLineage(BaseModel):
+    """Response body for GET /api/research/{job_id}/lineage."""
+
+    parent: FollowUpLink | None
+    children: list[FollowUpLink]

@@ -402,6 +402,66 @@
     column-gap: 2rem;
   }
 
+  .report-followups-inner {
+    max-width: 80rem;
+    margin: 0 auto;
+    padding: 2.5rem 5.5rem 3rem;
+  }
+
+  .report-followup-row {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto;
+    align-items: baseline;
+    column-gap: 1.25rem;
+    padding: 1rem 0.75rem;
+    margin: 0 -0.75rem;
+    border-top: 1px solid var(--line-soft);
+    color: inherit;
+    text-decoration: none;
+    border-radius: 2px;
+    transition:
+      background 0.15s ease,
+      padding-left 0.15s ease;
+  }
+
+  .report-followup-row:hover {
+    background: var(--bg);
+  }
+
+  .report-followup-row:hover .report-followup-question {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .report-followup-index {
+    font-size: 0.6875rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .report-followup-question {
+    font-size: 1.125rem;
+    line-height: 1.4;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .report-followup-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    white-space: nowrap;
+  }
+
+  .report-followup-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    display: block;
+    flex-shrink: 0;
+  }
+
   .margin-panel {
     padding: 1.875rem 1.5rem 2.5rem;
   }
@@ -468,6 +528,14 @@
 
     .report-summary-text {
       font-size: 1.25rem;
+    }
+
+    .report-followups-inner {
+      padding: 2rem 1.5rem 2.25rem;
+    }
+
+    .report-followup-question {
+      font-size: 1rem;
     }
 
     .report-row {

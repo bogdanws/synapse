@@ -11,7 +11,12 @@ import pytest
 import respx
 
 from app.agents.scout import ScoutAgent, ScoutValidationError, _canonical_url, _RawSource
-from app.agents.scout_graph import ScoutOutput, run_scout
+from app.agents.scout_graph import (
+    _MAX_MERGED_SEED_SOURCES,
+    _MAX_SEED_SOURCES,
+    ScoutOutput,
+    run_scout,
+)
 from app.models.events import (
     ProgressEvent,
     ScoutComplete,
@@ -438,6 +443,156 @@ async def test_run_scout_continues_when_one_sub_question_search_fails() -> None:
     )
 
     assert len(output.sources) == 1
+
+
+class _CapturingAgent(_StaticAgent):
+    """`_StaticAgent` that records the sources handed to `score`."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.scored_input: list[_RawSource] = []
+
+    async def score(self, topic: str, sources: list[_RawSource]) -> list[Source]:
+        self.scored_input = list(sources)
+        return await super().score(topic, sources)
+
+
+def _seed(url: str, *, credibility: float, relevance: float, snippet: str = "seed") -> Source:
+    return Source(
+        id="s1",
+        url=url,  # type: ignore[arg-type]
+        title=url,
+        credibility=credibility,
+        relevance=relevance,
+        snippet=snippet,
+    )
+
+
+async def test_run_scout_reuses_parent_sources_without_rescoring() -> None:
+    """A follow-up keeps the parent's sources at their stored scores and only scores fresh hits.
+
+    Seeds skip the scoring LLM (only their snippet is persisted, so re-judging would
+    rate them on less material than the full-bodied fresh hits). A fresh hit that
+    rediscovers a seed URL is dropped in favour of the parent copy, and the merged set
+    is re-indexed into one clean citation id space (seeds first, then fresh).
+    """
+    job_id = uuid4()
+    seed = [_seed("https://parent.example/a", credibility=0.6, relevance=0.7, snippet="parent")]
+    fresh_scored = [
+        Source(
+            id="s1",
+            url="https://new.example/b",  # type: ignore[arg-type]
+            title="New B",
+            credibility=0.5,
+            relevance=0.8,
+            snippet="...",
+        ),
+    ]
+    agent = _CapturingAgent(
+        sub_questions=["the follow-up question"],
+        search_results={
+            "the follow-up question": [
+                _raw("https://parent.example/a", title="dup-from-search"),
+                _raw("https://new.example/b", title="New B"),
+            ]
+        },
+        scored=fresh_scored,
+    )
+
+    captured: list[ProgressEvent] = []
+    output = await run_scout(
+        job_id=job_id,
+        topic="the follow-up question",
+        agent=agent,  # type: ignore[arg-type]
+        publish=lambda e: _record(captured, e),
+        sub_questions_override=["the follow-up question"],
+        seed_sources=seed,
+    )
+
+    # Only the fresh, non-colliding hit reaches the scorer; the seed is not re-judged
+    # and the search-side duplicate of the seed URL is dropped.
+    assert [r.url for r in agent.scored_input] == ["https://new.example/b"]
+
+    assert [str(s.url) for s in output.sources] == [
+        "https://parent.example/a",
+        "https://new.example/b",
+    ]
+    # Re-indexed into a fresh, unique id space.
+    assert [s.id for s in output.sources] == ["s1", "s2"]
+    # The seed kept its parent-assigned score and snippet verbatim.
+    seed_out = output.sources[0]
+    assert (seed_out.credibility, seed_out.relevance) == (0.6, 0.7)
+    assert seed_out.snippet == "parent"
+
+
+async def test_run_scout_caps_seed_sources() -> None:
+    """Only the strongest `_MAX_SEED_SOURCES` parent sources are carried into a follow-up."""
+    job_id = uuid4()
+    # Distinct, descending scores so the cap boundary is unambiguous.
+    seeds = [
+        _seed(f"https://parent.example/{i}", credibility=1.0, relevance=1.0 - i * 0.01)
+        for i in range(_MAX_SEED_SOURCES + 5)
+    ]
+    agent = _StaticAgent(
+        sub_questions=["q"],
+        search_results={"q": []},
+        scored=[],
+    )
+
+    output = await run_scout(
+        job_id=job_id,
+        topic="q",
+        agent=agent,  # type: ignore[arg-type]
+        publish=lambda e: _record([], e),
+        sub_questions_override=["q"],
+        seed_sources=seeds,
+    )
+
+    assert len(output.sources) == _MAX_SEED_SOURCES
+    kept = {str(s.url) for s in output.sources}
+    # The five weakest seeds are dropped.
+    for i in range(_MAX_SEED_SOURCES, _MAX_SEED_SOURCES + 5):
+        assert f"https://parent.example/{i}" not in kept
+
+
+async def test_run_scout_caps_merged_seed_set() -> None:
+    """The combined seed+fresh set a follow-up emits is bounded, so chains can't grow unbounded."""
+    job_id = uuid4()
+    seeds = [
+        _seed(f"https://parent.example/{i}", credibility=0.5, relevance=0.5)
+        for i in range(_MAX_MERGED_SEED_SOURCES - 2)
+    ]
+    fresh_scored = [
+        Source(
+            id="s1",
+            url=f"https://new.example/{i}",  # type: ignore[arg-type]
+            title=f"new {i}",
+            credibility=0.9,
+            relevance=0.9,
+            snippet="...",
+        )
+        for i in range(5)
+    ]
+    agent = _StaticAgent(
+        sub_questions=["q"],
+        search_results={"q": [_raw(f"https://new.example/{i}") for i in range(5)]},
+        scored=fresh_scored,
+    )
+
+    output = await run_scout(
+        job_id=job_id,
+        topic="q",
+        agent=agent,  # type: ignore[arg-type]
+        publish=lambda e: _record([], e),
+        sub_questions_override=["q"],
+        seed_sources=seeds,
+    )
+
+    assert len(output.sources) == _MAX_MERGED_SEED_SOURCES
+    # The high-scoring fresh hits all survive the cap; the weakest seeds are dropped.
+    kept = {str(s.url) for s in output.sources}
+    for i in range(5):
+        assert f"https://new.example/{i}" in kept
 
 
 async def _record(out: list[ProgressEvent], event: ProgressEvent) -> None:
