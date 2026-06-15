@@ -125,6 +125,9 @@ class _FakeRepo:
     async def get_job(self, job_id: UUID) -> ResearchJob:
         return self._session.job  # type: ignore[no-any-return,attr-defined]
 
+    async def get_follow_up_parent_id(self, job_id: UUID) -> UUID | None:
+        return self._session.parent_id  # type: ignore[no-any-return,attr-defined]
+
     async def set_status(
         self, job_id: UUID, *, status: JobStatus, progress: float | None = None
     ) -> None:
@@ -151,18 +154,31 @@ class _FakeRepo:
 class _FakeSession:
     """Minimal stand-in matching the bits of AsyncSession the orchestrator uses."""
 
-    def __init__(self, job: ResearchJob) -> None:
+    def __init__(
+        self,
+        job: ResearchJob,
+        *,
+        parent_id: UUID | None = None,
+        parent_sources: list[Source] | None = None,
+    ) -> None:
         self.job = job
+        self.parent_id = parent_id
+        self.parent_sources = parent_sources or []
         self.commits = 0
 
     async def commit(self) -> None:
         self.commits += 1
 
 
-def _make_session_factory(job: ResearchJob) -> Callable[[], Any]:
+def _make_session_factory(
+    job: ResearchJob,
+    *,
+    parent_id: UUID | None = None,
+    parent_sources: list[Source] | None = None,
+) -> Callable[[], Any]:
     @asynccontextmanager
     async def _factory() -> Any:
-        yield _FakeSession(job)
+        yield _FakeSession(job, parent_id=parent_id, parent_sources=parent_sources)
 
     return _factory
 
@@ -216,6 +232,7 @@ def patched_orchestrator(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         "scout_error": None,
         "scribe_error": None,
         "critic_error": None,
+        "scout_seed_received": None,
     }
 
     async def fake_run_scout(
@@ -225,13 +242,18 @@ def patched_orchestrator(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         agent: object,
         publish: Callable[..., Awaitable[None]],
         sub_questions_override: list[str] | None = None,
+        seed_sources: list[Source] | None = None,
     ) -> ScoutOutput:
+        config["scout_seed_received"] = seed_sources
         if config["scout_error"]:
             raise RuntimeError(config["scout_error"])
         await publish(
             ScoutComplete(job_id=job_id, source_count=len(config["scout_output"].sources))
         )
         return config["scout_output"]
+
+    async def fake_load_sources(session: Any, job_id: UUID) -> list[Source]:
+        return list(session.parent_sources)
 
     async def fake_run_scribe(
         *,
@@ -275,6 +297,7 @@ def patched_orchestrator(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     monkeypatch.setattr(orch, "run_scout", fake_run_scout)
     monkeypatch.setattr(orch, "run_scribe", fake_run_scribe)
     monkeypatch.setattr(orch, "run_critic", fake_run_critic)
+    monkeypatch.setattr(orch, "load_sources", fake_load_sources)
 
     return config
 
@@ -443,6 +466,40 @@ async def test_pipeline_publishes_intermediate_events_from_all_three_phases(
     expected_fourth = types_in_order.index("ClaimVerified")
     expected_fifth = types_in_order.index("JobCompleted")
     assert expected_first < expected_second < expected_third < expected_fourth < expected_fifth
+
+
+async def test_pipeline_seeds_scout_with_parent_sources_for_follow_up_child(
+    patched_orchestrator: dict[str, Any],
+) -> None:
+    """A child job whose id has a FollowUp parent edge passes the parent's sources to Scout."""
+    parent_sources = [_source("s1"), _source("s2")]
+
+    await orch.run_pipeline(
+        job_id=patched_orchestrator["job_id"],
+        session_factory=_make_session_factory(
+            patched_orchestrator["job"],
+            parent_id=uuid4(),
+            parent_sources=parent_sources,
+        ),
+        publish=_noop,
+        cleanup=_noop_cleanup,
+    )
+
+    assert patched_orchestrator["scout_seed_received"] == parent_sources
+
+
+async def test_pipeline_does_not_seed_scout_for_a_root_job(
+    patched_orchestrator: dict[str, Any],
+) -> None:
+    """A job with no parent edge runs Scout without seed sources (fresh research)."""
+    await orch.run_pipeline(
+        job_id=patched_orchestrator["job_id"],
+        session_factory=_make_session_factory(patched_orchestrator["job"]),
+        publish=_noop,
+        cleanup=_noop_cleanup,
+    )
+
+    assert patched_orchestrator["scout_seed_received"] is None
 
 
 async def _noop(_event: ProgressEvent) -> None:

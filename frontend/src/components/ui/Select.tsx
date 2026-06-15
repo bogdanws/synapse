@@ -85,7 +85,7 @@ export function Select<T extends string>({
       <BaseSelect.Trigger
         aria-label={ariaLabel}
         className={cn(
-          'inline-flex items-center gap-1.5 bg-transparent font-sans text-[12px] text-left',
+          'inline-flex items-center gap-1.5 bg-transparent font-sans text-sm text-left',
           'outline-none cursor-pointer transition-colors duration-150',
           'text-fg',
           'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -131,12 +131,12 @@ export function Select<T extends string>({
         >
           <BaseSelect.Popup
             className={cn(
-              'scrollbar font-sans text-[13px] outline-none',
+              'scrollbar font-sans text-sm outline-none',
               'min-w-[var(--anchor-width)]',
               'data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
               'data-[ending-style]:translate-y-[-2px] data-[starting-style]:translate-y-[-2px]',
               'transition-[opacity,transform] duration-150 ease-out',
-              'max-h-[min(320px,60vh)] overflow-auto',
+              'max-h-[min(20rem,60vh)] overflow-auto',
               popupClassName,
             )}
             style={{
@@ -145,7 +145,7 @@ export function Select<T extends string>({
               border: '1px solid var(--fg)',
               letterSpacing: '-0.005em',
               // Faint second-sheet to lift the popup off the page without a CSS drop shadow.
-              boxShadow: '4px 4px 0 0 var(--bg-2), 4px 4px 0 1px var(--line)',
+              boxShadow: '0.25rem 0.25rem 0 0 var(--bg-2), 0.25rem 0.25rem 0 1px var(--line)',
             }}
           >
             <BaseSelect.List className="py-1">
@@ -170,7 +170,7 @@ export function Select<T extends string>({
                   <span className="inline-flex w-2 h-2 shrink-0 items-center justify-center">
                     <BaseSelect.ItemIndicator>
                       <span
-                        className="inline-block w-[5px] h-[5px] rounded-full"
+                        className="inline-block size-1.5 rounded-full"
                         style={{ background: 'var(--fg)' }}
                       />
                     </BaseSelect.ItemIndicator>
@@ -182,7 +182,7 @@ export function Select<T extends string>({
                     <BaseSelect.ItemText className="truncate">{opt.label}</BaseSelect.ItemText>
                     {opt.description && (
                       <span
-                        className="font-mono text-[10px] truncate"
+                        className="font-mono text-xs truncate"
                         style={{ color: 'var(--muted)', letterSpacing: '0.04em' }}
                       >
                         {opt.description}

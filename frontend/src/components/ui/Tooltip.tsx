@@ -29,8 +29,8 @@ function Tooltip({ content, children, className, ...rootProps }: TooltipProps) {
         <BaseTooltip.Positioner sideOffset={8}>
           <BaseTooltip.Popup
             className={cn(
-              'bg-fg text-bg font-mono text-[10px] uppercase tracking-[0.08em]',
-              'px-2 py-1.5 max-w-[260px] leading-snug',
+              'bg-fg text-bg font-mono text-xs uppercase tracking-[0.08em]',
+              'px-2 py-1.5 max-w-64 leading-snug',
               'data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
               'transition-opacity duration-150',
               className,

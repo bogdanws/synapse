@@ -39,12 +39,10 @@ export function PhaseShell({
 
   return (
     <section
-      className={cn('mb-4', isQueue && 'opacity-[0.78]')}
+      className={cn('mb-4 border border-line p-5 px-6', isQueue && 'opacity-[0.78]')}
       style={{
-        border: '1px solid var(--line)',
         borderLeft: `3px solid ${borderColor}`,
         background: bgColor,
-        padding: '20px 24px',
       }}
       aria-label={`${agent} phase`}
     >
@@ -52,25 +50,15 @@ export function PhaseShell({
         <div className="relative">
           <AgentDot agent={agent} size={32} halo={isActive} />
           <span
-            className="font-mono absolute -bottom-1 -right-1 text-[8px] leading-none"
+            className="font-mono absolute -bottom-1 -right-1 text-xs leading-none"
             style={{ color: `var(--${agent})` }}
             aria-hidden
           >
             {stageNum}
           </span>
         </div>
-        <div style={{ flex: 1 }}>
-          <div
-            className="serif"
-            style={{
-              fontSize: 22,
-              fontWeight: 400,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-            }}
-          >
-            {title}
-          </div>
+        <div className="flex-1">
+          <div className="serif text-xl font-normal tracking-tight leading-tight">{title}</div>
           <div className="micro mt-1.5">{summary}</div>
         </div>
         <div

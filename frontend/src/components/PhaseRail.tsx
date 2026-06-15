@@ -103,7 +103,7 @@ export function PhaseRail({
       <div className="grid grid-cols-3 relative">
         {/* Connector spine behind the discs */}
         <div
-          className="absolute h-px top-[13px]"
+          className="absolute h-px top-3"
           style={{
             left: '16%',
             right: '16%',
@@ -143,10 +143,7 @@ export function PhaseRail({
               </div>
 
               <div className="mt-3 text-center">
-                <div
-                  className="serif text-[18px] font-medium"
-                  style={{ letterSpacing: '-0.015em' }}
-                >
+                <div className="serif text-lg font-medium" style={{ letterSpacing: '-0.015em' }}>
                   {meta.name}
                   {isActive && (
                     <span

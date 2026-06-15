@@ -72,6 +72,36 @@ class ResearchJob(BaseModel):
     completed_at: datetime | None = None
 
 
+class JobSummary(BaseModel):
+    """Compact job descriptor for the history list (`GET /api/research`).
+
+    Carries only what the library list renders, plus the follow-up parent edge so a child job
+    can show a "Follow-up of …" link. `source_count` and `overall_confidence` are derived by
+    join at query time; `overall_confidence` is null until the job completes and Critic writes its
+    annotations.
+    """
+
+    id: UUID
+    topic: str
+    status: JobStatus
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    created_at: datetime
+    source_count: int = 0
+    overall_confidence: float | None = None
+    parent_job_id: UUID | None = None
+    parent_topic: str | None = None
+    follow_ups: list[str] = Field(default_factory=list)
+
+
+class JobListResponse(BaseModel):
+    """Paginated envelope for the history list."""
+
+    items: list[JobSummary]
+    total: int
+    limit: int
+    offset: int
+
+
 class Source(BaseModel):
     """A single source gathered by Scout, referenced by Scribe and Critic."""
 
@@ -168,3 +198,32 @@ class PreviewResponse(BaseModel):
     """Response body for POST /api/research/preview."""
 
     sub_questions: list[str]
+
+
+class FollowUpRequest(BaseModel):
+    """Inbound body for POST /api/research/{job_id}/follow-up.
+
+    The child job inherits language, depth, and per-agent models from the parent, so the only thing the caller supplies is the new question.
+    """
+
+    question: str = Field(..., min_length=3, max_length=500)
+
+
+class FollowUpLink(BaseModel):
+    """One edge in a job's follow-up lineage.
+
+    `job_id` / `topic` / `status` describe the job on the *other* end of the edge (the parent when this link is a job's parent, a child when it is one of a job's children); `question` is the follow-up question recorded on the edge itself.
+    """
+
+    job_id: UUID
+    question: str
+    topic: str
+    status: JobStatus
+    created_at: datetime
+
+
+class JobLineage(BaseModel):
+    """Response body for GET /api/research/{job_id}/lineage."""
+
+    parent: FollowUpLink | None
+    children: list[FollowUpLink]

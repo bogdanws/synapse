@@ -30,7 +30,12 @@ vi.mock('../hooks/useReport', () => ({
   useReport: vi.fn(),
 }))
 
+vi.mock('../hooks/useJobLineage', () => ({
+  useJobLineage: vi.fn(),
+}))
+
 import { useReport } from '../hooks/useReport'
+import { useJobLineage } from '../hooks/useJobLineage'
 
 // ——————————————————————————————————————————————————————————
 // Fixtures
@@ -133,6 +138,10 @@ function renderPage() {
 describe('ReportPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Default: no lineage. Individual cross-link tests override this.
+    vi.mocked(useJobLineage).mockReturnValue({ data: undefined } as unknown as ReturnType<
+      typeof useJobLineage
+    >)
   })
 
   it('renders loading state while useReport is loading', () => {
@@ -185,6 +194,65 @@ describe('ReportPage', () => {
     renderPage()
     expect(screen.getByText(/report is being prepared/i)).toBeInTheDocument()
     expect(screen.getByText(/back to progress view/i)).toBeInTheDocument()
+  })
+
+  // —— Follow-up cross-links ——
+
+  it('renders a back-link to the parent when this report is a follow-up', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    vi.mocked(useJobLineage).mockReturnValue({
+      data: {
+        parent: {
+          job_id: 'parent-77',
+          question: 'Original question',
+          topic: 'The original Eastern European VC brief',
+          status: 'completed',
+          created_at: new Date().toISOString(),
+        },
+        children: [],
+      },
+    } as unknown as ReturnType<typeof useJobLineage>)
+    renderPage()
+    expect(screen.getByText(/Follow-up of/i)).toBeInTheDocument()
+  })
+
+  it('lists follow-up children with their status', () => {
+    vi.mocked(useReport).mockReturnValue({
+      data: _VERIFIED_REPORT,
+      isLoading: false,
+      error: null,
+    })
+    vi.mocked(useJobLineage).mockReturnValue({
+      data: {
+        parent: null,
+        children: [
+          {
+            job_id: 'child-1',
+            question: 'What about exits?',
+            topic: 'What about exits?',
+            status: 'completed',
+            created_at: new Date().toISOString(),
+          },
+          {
+            job_id: 'child-2',
+            question: 'And funding stages?',
+            topic: 'And funding stages?',
+            status: 'scouting',
+            created_at: new Date().toISOString(),
+          },
+        ],
+      },
+    } as unknown as ReturnType<typeof useJobLineage>)
+    renderPage()
+    expect(screen.getByText(/Continue the thread/i)).toBeInTheDocument()
+    expect(screen.getByText('· 2')).toBeInTheDocument()
+    expect(screen.getByText('What about exits?')).toBeInTheDocument()
+    expect(screen.getByText('And funding stages?')).toBeInTheDocument()
+    expect(screen.getByText('scouting')).toBeInTheDocument()
   })
 
   // —— Source panel enhancements ——

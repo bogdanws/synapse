@@ -33,7 +33,7 @@ export function Pill({
       {agent && <AgentDot agent={agent} size={18} className="mr-1" />}
       <div className="flex flex-col items-start">
         <span className="micro leading-none">{label}</span>
-        <div className="font-sans text-[12px] leading-tight mt-0.5">{value}</div>
+        <div className="font-sans text-sm leading-tight mt-0.5">{value}</div>
       </div>
     </>
   )

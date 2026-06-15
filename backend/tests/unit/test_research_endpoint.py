@@ -12,14 +12,19 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.agents.scout import ScoutValidationError
+from app.api.routes import _MAX_FOLLOW_UP_DEPTH
 from app.auth.dependencies import current_active_user
 from app.db.session import get_db
 from app.main import app
+from app.middleware.ratelimit import limiter
 from app.models import orm
 from app.models.research import (
     ClaimFlag,
     CriticAnnotations,
     Depth,
+    FollowUpLink,
+    JobLineage,
+    JobListResponse,
     JobStatus,
     ResearchJob,
     ScribeReport,
@@ -55,10 +60,20 @@ class _FakeSession:
     async def commit(self) -> None:
         self.commits += 1
 
+    async def flush(self) -> None:
+        # Real SQLAlchemy assigns the python-side `default=uuid4` id here, which
+        # the follow-up route needs before it can write the edge referencing it.
+        for obj in self.added:
+            self._stamp(obj)
+
     async def refresh(self, obj: Any) -> None:
-        # Real SQLAlchemy populates the server-default columns at this point;
-        # the route only reads `id`, `topic`, `language`, `models`, `status`,
-        # `progress`, `created_at`, `updated_at` afterwards, so stamp those.
+        self._stamp(obj)
+
+    @staticmethod
+    def _stamp(obj: Any) -> None:
+        # Real SQLAlchemy populates the server-default columns here; the route
+        # only reads `id`, `topic`, `language`, `models`, `status`, `progress`,
+        # `created_at`, `updated_at` afterwards, so stamp those.
         if isinstance(obj, orm.ResearchJob):
             if obj.id is None:
                 obj.id = uuid4()
@@ -67,6 +82,13 @@ class _FakeSession:
                 obj.created_at = now
             if obj.updated_at is None:
                 obj.updated_at = now
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    # The follow-up endpoint is rate-limited; without a per-test reset the limiter's
+    # in-memory counter bleeds across tests and trips later cases non-deterministically.
+    limiter.reset()
 
 
 @pytest.fixture
@@ -447,5 +469,288 @@ async def test_export_markdown_passes_user_id_to_repo(authed_client_stub_db: Asy
     with patch("app.api.routes.JobRepository.get_report", new=mock):
         await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/export/markdown")
     assert mock.await_count == 1
+    _, kwargs = mock.await_args
+    assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)
+
+
+async def test_list_research_requires_auth(client: AsyncClient) -> None:
+    response = await client.get("/api/research")
+    assert response.status_code == 401
+
+
+async def test_list_research_defaults_to_limit_20_offset_0(
+    authed_client_stub_db: AsyncClient,
+) -> None:
+    empty = JobListResponse(items=[], total=0, limit=20, offset=0)
+    mock = AsyncMock(return_value=empty)
+    with patch("app.api.routes.JobRepository.list_jobs", new=mock):
+        response = await authed_client_stub_db.get("/api/research")
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 0, "limit": 20, "offset": 0}
+    _, kwargs = mock.await_args
+    assert kwargs == {"limit": 20, "offset": 0}
+
+
+async def test_list_research_forwards_pagination_params(
+    authed_client_stub_db: AsyncClient,
+) -> None:
+    mock = AsyncMock(return_value=JobListResponse(items=[], total=0, limit=5, offset=10))
+    with patch("app.api.routes.JobRepository.list_jobs", new=mock):
+        response = await authed_client_stub_db.get("/api/research?limit=5&offset=10")
+    assert response.status_code == 200
+    _, kwargs = mock.await_args
+    assert kwargs == {"limit": 5, "offset": 10}
+
+
+@pytest.mark.parametrize("query", ["limit=0", "limit=51", "offset=-1"])
+async def test_list_research_rejects_out_of_range_params(
+    authed_client_stub_db: AsyncClient, query: str
+) -> None:
+    response = await authed_client_stub_db.get(f"/api/research?{query}")
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/research/{job_id}
+# ---------------------------------------------------------------------------
+
+
+async def test_delete_research_requires_auth(client: AsyncClient) -> None:
+    response = await client.delete(f"/api/research/{_JOB_ID}")
+    assert response.status_code == 401
+
+
+async def test_delete_research_returns_204_on_success(
+    authed_client: AsyncClient, fake_session: _FakeSession
+) -> None:
+    with patch("app.api.routes.JobRepository.delete_job", new=AsyncMock(return_value=None)):
+        response = await authed_client.delete(f"/api/research/{_JOB_ID}")
+    assert response.status_code == 204
+    assert response.content == b""
+    # The route must commit so the delete is durable.
+    assert fake_session.commits == 1
+
+
+async def test_delete_research_not_found(authed_client_stub_db: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.JobRepository.delete_job",
+        new=AsyncMock(side_effect=JobNotFoundError("not found")),
+    ):
+        response = await authed_client_stub_db.delete(f"/api/research/{_JOB_ID}")
+    assert response.status_code == 404
+
+
+async def test_delete_research_scopes_to_current_user(
+    authed_client: AsyncClient,
+) -> None:
+    """The route must scope the delete to the caller so other tenants' jobs surface as 404, not a silent delete."""
+    mock = AsyncMock(return_value=None)
+    with patch("app.api.routes.JobRepository.delete_job", new=mock):
+        await authed_client.delete(f"/api/research/{_JOB_ID}")
+    assert mock.await_count == 1
+
+
+# ---------------------------------------------------------------------------
+# POST /api/research/{job_id}/follow-up
+# ---------------------------------------------------------------------------
+
+
+def _completed_parent(status: JobStatus = JobStatus.COMPLETED) -> ResearchJob:
+    return ResearchJob(
+        id=_JOB_ID,
+        topic="Parent topic",
+        language="ro",
+        depth=Depth.DEEP,
+        models=_VALID_MODELS,
+        status=status,
+        progress=1.0,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+
+
+async def test_follow_up_requires_auth(client: AsyncClient) -> None:
+    response = await client.post(
+        f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+    )
+    assert response.status_code == 401
+
+
+async def test_follow_up_creates_child_inheriting_parent_settings(
+    authed_client: AsyncClient, fake_session: _FakeSession
+) -> None:
+    # First get_job resolves the parent; the second reads the freshly-created child
+    # back for the response (the route returns the persisted view, not a hand-rolled one).
+    child_view = ResearchJob(
+        id=uuid4(),
+        topic="What about X?",
+        language="ro",
+        depth=Depth.DEEP,
+        models=_VALID_MODELS,
+        sub_questions=["What about X?"],
+        status=JobStatus.PENDING,
+        progress=0.0,
+        created_at=_NOW,
+        updated_at=_NOW,
+    )
+    with (
+        patch(
+            "app.api.routes.JobRepository.get_job",
+            new=AsyncMock(side_effect=[_completed_parent(), child_view]),
+        ),
+        patch("app.api.routes.JobRepository.get_follow_up_depth", new=AsyncMock(return_value=0)),
+        patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()) as kiq,
+    ):
+        response = await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["topic"] == "What about X?"
+    assert body["status"] == "pending"
+    assert body["sub_questions"] == ["What about X?"]
+
+    # The child row and its FollowUp edge land in a single transaction.
+    assert fake_session.commits == 1
+    child = next(o for o in fake_session.added if isinstance(o, orm.ResearchJob))
+    edge = next(o for o in fake_session.added if isinstance(o, orm.FollowUp))
+    # The orm child inherits the parent's settings and is scoped to the question.
+    assert child.language == "ro"
+    assert child.depth == Depth.DEEP.value
+    assert child.models == _VALID_MODELS
+    assert child.sub_questions_override == ["What about X?"]
+    assert edge.parent_job_id == _JOB_ID
+    assert edge.child_job_id == child.id
+    assert edge.question == "What about X?"
+    kiq.assert_awaited_once_with(child.id)
+
+
+async def test_follow_up_rejects_chain_past_depth_limit(
+    authed_client: AsyncClient, fake_session: _FakeSession
+) -> None:
+    with (
+        patch(
+            "app.api.routes.JobRepository.get_job", new=AsyncMock(return_value=_completed_parent())
+        ),
+        patch(
+            "app.api.routes.JobRepository.get_follow_up_depth",
+            new=AsyncMock(return_value=_MAX_FOLLOW_UP_DEPTH),
+        ),
+        patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()) as kiq,
+    ):
+        response = await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+
+    assert response.status_code == 409
+    assert str(_MAX_FOLLOW_UP_DEPTH) in response.json()["detail"]
+    # Nothing is persisted and no work is enqueued when the chain is too deep.
+    assert fake_session.commits == 0
+    assert fake_session.added == []
+    kiq.assert_not_awaited()
+
+
+async def test_follow_up_rejects_incomplete_parent(authed_client: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.JobRepository.get_job",
+        new=AsyncMock(return_value=_completed_parent(status=JobStatus.SCOUTING)),
+    ):
+        response = await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+    assert response.status_code == 409
+    assert "completed" in response.json()["detail"].lower()
+
+
+async def test_follow_up_parent_not_found(authed_client: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.JobRepository.get_job",
+        new=AsyncMock(side_effect=JobNotFoundError("nope")),
+    ):
+        response = await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+    assert response.status_code == 404
+
+
+@pytest.mark.parametrize("bad_question", ["", "ab"])
+async def test_follow_up_rejects_short_question(
+    authed_client: AsyncClient, bad_question: str
+) -> None:
+    response = await authed_client.post(
+        f"/api/research/{_JOB_ID}/follow-up", json={"question": bad_question}
+    )
+    assert response.status_code == 422
+
+
+async def test_follow_up_scopes_parent_lookup_to_user(authed_client: AsyncClient) -> None:
+    mock = AsyncMock(return_value=_completed_parent())
+    with (
+        patch("app.api.routes.JobRepository.get_job", new=mock),
+        patch("app.api.routes.JobRepository.get_follow_up_depth", new=AsyncMock(return_value=0)),
+        patch("app.api.routes.run_research_pipeline.kiq", new=AsyncMock()),
+    ):
+        await authed_client.post(
+            f"/api/research/{_JOB_ID}/follow-up", json={"question": "What about X?"}
+        )
+    # The parent lookup (first call) is scoped to the authenticated user.
+    args, kwargs = mock.await_args_list[0]
+    assert args[0] == _JOB_ID
+    assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/research/{job_id}/lineage
+# ---------------------------------------------------------------------------
+
+
+def _sample_lineage() -> JobLineage:
+    return JobLineage(
+        parent=None,
+        children=[
+            FollowUpLink(
+                job_id=uuid4(),
+                question="What about X?",
+                topic="What about X?",
+                status=JobStatus.COMPLETED,
+                created_at=_NOW,
+            )
+        ],
+    )
+
+
+async def test_lineage_requires_auth(client: AsyncClient) -> None:
+    response = await client.get(f"/api/research/{_JOB_ID}/lineage")
+    assert response.status_code == 401
+
+
+async def test_lineage_returns_parent_and_children(authed_client_stub_db: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.JobRepository.get_lineage",
+        new=AsyncMock(return_value=_sample_lineage()),
+    ):
+        response = await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/lineage")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["parent"] is None
+    assert len(body["children"]) == 1
+    assert body["children"][0]["question"] == "What about X?"
+    assert body["children"][0]["status"] == "completed"
+
+
+async def test_lineage_not_found(authed_client_stub_db: AsyncClient) -> None:
+    with patch(
+        "app.api.routes.JobRepository.get_lineage",
+        new=AsyncMock(side_effect=JobNotFoundError("nope")),
+    ):
+        response = await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/lineage")
+    assert response.status_code == 404
+
+
+async def test_lineage_scopes_lookup_to_user(authed_client_stub_db: AsyncClient) -> None:
+    mock = AsyncMock(return_value=_sample_lineage())
+    with patch("app.api.routes.JobRepository.get_lineage", new=mock):
+        await authed_client_stub_db.get(f"/api/research/{_JOB_ID}/lineage")
     _, kwargs = mock.await_args
     assert "user_id" in kwargs and isinstance(kwargs["user_id"], UUID)

@@ -10,13 +10,19 @@ from uuid import uuid4
 
 import pytest
 
+from app.models import orm
 from app.models.research import (
     Contradiction,
+    JobStatus,
     ReportSection,
     ScribeReport,
     Source,
 )
-from app.services.persistence import _report_body_jsonb, _to_source_orm
+from app.services.persistence import (
+    _report_body_jsonb,
+    _to_follow_up_link,
+    _to_source_orm,
+)
 
 
 def _source(short_id: str = "s1") -> Source:
@@ -87,3 +93,31 @@ def test_report_body_jsonb_is_round_trippable_json() -> None:
     assert blob["sources"][0]["id"] == "s1"
     assert blob["contradictions"][0]["description"] == "d"
     assert blob["follow_ups"] == ["What about Y?"]
+
+
+def test_to_follow_up_link_describes_the_linked_job() -> None:
+    job_id = uuid4()
+    created = datetime(2024, 6, 1, tzinfo=UTC)
+    job_row = orm.ResearchJob(
+        id=job_id,
+        user_id=uuid4(),
+        topic="Parent topic",
+        models={"scout": "x", "scribe": "y", "critic": "z"},
+        status=JobStatus.COMPLETED.value,
+    )
+    fu_row = orm.FollowUp(
+        parent_job_id=uuid4(),
+        child_job_id=uuid4(),
+        question="What about Y?",
+        created_at=created,
+    )
+
+    link = _to_follow_up_link(job_row, fu_row)
+
+    # The link describes the *linked* job (topic/status/id) but carries the
+    # question and timestamp from the edge, not from either job row.
+    assert link.job_id == job_id
+    assert link.topic == "Parent topic"
+    assert link.status is JobStatus.COMPLETED
+    assert link.question == "What about Y?"
+    assert link.created_at == created

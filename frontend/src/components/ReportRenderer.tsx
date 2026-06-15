@@ -89,18 +89,18 @@ function ClaimHighlight({ id, flag, children }: ClaimHighlightProps) {
   const accent = verdictColorOnInverse(flag.verdict)
 
   const tooltipContent = (
-    <div className="flex flex-col gap-1.5 normal-case tracking-normal py-0.5 max-w-[260px]">
+    <div className="flex flex-col gap-1.5 normal-case tracking-normal py-0.5 max-w-64">
       <div className="flex items-center gap-1.5">
         <span
           className="inline-block w-1 h-1 rounded-full"
           style={{ background: accent }}
           aria-hidden
         />
-        <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: accent }}>
+        <span className="font-mono text-xs uppercase tracking-widest" style={{ color: accent }}>
           {flag.verdict.replace(/_/g, ' ')}
         </span>
       </div>
-      <div className="font-serif text-[13px] leading-snug text-bg/95">{flag.rationale}</div>
+      <div className="font-serif text-sm leading-snug text-bg/95">{flag.rationale}</div>
     </div>
   )
 
@@ -133,15 +133,15 @@ function Footnote({ source, label, onSourceClick }: FootnoteProps) {
   // variant — `credibilityColor` is for chips on the page background.
   const credColor = credibilityColorOnInverse(source.credibility)
   const tooltipContent = (
-    <div className="flex flex-col gap-2 normal-case tracking-normal py-0.5 max-w-[260px] text-bg">
-      <div className="font-serif text-[13px] leading-snug text-bg/95">{source.title}</div>
+    <div className="flex flex-col gap-2 normal-case tracking-normal py-0.5 max-w-64 text-bg">
+      <div className="font-serif text-sm leading-snug text-bg/95">{source.title}</div>
       <div className="border-t border-bg/15 pt-1.5 flex items-center gap-2">
-        <span className="font-mono text-[9px] text-bg/60 uppercase tracking-widest truncate">
+        <span className="font-mono text-xs text-bg/60 uppercase tracking-widest truncate">
           {domain}
         </span>
         <span className="w-px h-2 bg-bg/20 shrink-0" />
         <span
-          className="font-mono text-[9px] uppercase tracking-widest shrink-0"
+          className="font-mono text-xs uppercase tracking-widest shrink-0"
           style={{ color: credColor }}
         >
           Cred .{(source.credibility * 100).toFixed(0)}
@@ -168,7 +168,7 @@ function Footnote({ source, label, onSourceClick }: FootnoteProps) {
       <a
         href={`#${source.id}`}
         onClick={handleClick}
-        className="inline-block px-0.5 font-mono text-[10px] font-bold no-underline transition-opacity hover:opacity-70"
+        className="inline-block px-0.5 font-mono text-xs font-bold no-underline transition-opacity hover:opacity-70"
         style={{ color }}
       >
         [{label}]

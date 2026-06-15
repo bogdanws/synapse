@@ -19,32 +19,12 @@ export function ReportSection({
   return (
     <section>
       <div className="flex items-baseline gap-4 mb-2">
-        <span className="font-mono shrink-0" style={{ fontSize: 11, color: 'var(--muted)' }}>
-          §{num}
-        </span>
-        <h2
-          className="serif flex-1"
-          style={{
-            fontSize: 36,
-            fontWeight: 400,
-            letterSpacing: '-0.025em',
-            margin: 0,
-            lineHeight: 1.1,
-          }}
-        >
+        <span className="font-mono shrink-0 text-xs text-muted">§{num}</span>
+        <h2 className="serif flex-1 m-0 text-4xl font-normal tracking-tight leading-tight">
           {section.heading}
         </h2>
       </div>
-      <div
-        className="serif"
-        style={{
-          fontSize: 16,
-          lineHeight: 1.65,
-          fontWeight: 300,
-          color: 'var(--fg)',
-          maxWidth: 680,
-        }}
-      >
+      <div className="serif max-w-2xl text-base font-light leading-relaxed text-fg">
         <ReportRenderer
           section={section}
           claimFlags={claimFlags}
