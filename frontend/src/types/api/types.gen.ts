@@ -259,6 +259,10 @@ export type JobSummary = {
      * Parent Topic
      */
     parent_topic?: string | null;
+    /**
+     * Follow Ups
+     */
+    follow_ups?: Array<string>;
 };
 
 /**

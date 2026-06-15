@@ -90,6 +90,7 @@ class JobSummary(BaseModel):
     overall_confidence: float | None = None
     parent_job_id: UUID | None = None
     parent_topic: str | None = None
+    follow_ups: list[str] = Field(default_factory=list)
 
 
 class JobListResponse(BaseModel):

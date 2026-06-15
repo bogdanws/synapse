@@ -119,8 +119,10 @@ class JobRepository:
         `source_count` is a correlated COUNT (0 when Scout hasn't written sources yet);
         `overall_confidence` comes from the Critic annotations and is NULL until the job completes;
         `parent_job_id`/`parent_topic` come from the at-most-one `FollowUp` child edge so the UI can
-        badge follow-up jobs and link back to the parent. Ordering carries a secondary `id` key so
-        offset paging stays stable when `created_at` ties.
+        badge follow-up jobs and link back to the parent. `follow_ups` is extracted from the report
+        body's `follow_ups` array *in SQL* (`body['follow_ups']`) rather than selecting the whole
+        JSONB document, so this hot, paginated query never detoasts/transfers/parses the full report.
+        Ordering carries a secondary `id` key so offset paging stays stable when `created_at` ties.
         """
         parent = aliased(orm.ResearchJob)
         source_count = (
@@ -136,6 +138,7 @@ class JobRepository:
                 orm.CriticAnnotation.overall_confidence,
                 orm.FollowUp.parent_job_id,
                 parent.topic,
+                orm.Report.body["follow_ups"],
             )
             .outerjoin(orm.Report, orm.Report.job_id == orm.ResearchJob.id)
             .outerjoin(orm.CriticAnnotation, orm.CriticAnnotation.report_id == orm.Report.id)
@@ -166,8 +169,9 @@ class JobRepository:
                 overall_confidence=confidence,
                 parent_job_id=parent_job_id,
                 parent_topic=parent_topic,
+                follow_ups=list(follow_ups or []),
             )
-            for job, count, confidence, parent_job_id, parent_topic in rows
+            for job, count, confidence, parent_job_id, parent_topic, follow_ups in rows
         ]
         return JobListResponse(items=items, total=total, limit=limit, offset=offset)
 

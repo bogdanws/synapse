@@ -1340,6 +1340,13 @@
               }
             ],
             "title": "Parent Topic"
+          },
+          "follow_ups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Follow Ups"
           }
         },
         "type": "object",

@@ -113,7 +113,7 @@ async def test_list_jobs_scoping_ordering_and_derived_fields(async_session: Asyn
         job_id=completed.id,
         title="R",
         summary_md="s",
-        body={},
+        body={"follow_ups": ["How did exits change in 2024?", "Which sectors recovered first?"]},
         model="scribe-v1",
         generated_at=datetime.now(UTC),
     )
@@ -162,6 +162,11 @@ async def test_list_jobs_scoping_ordering_and_derived_fields(async_session: Asyn
     assert by_topic["Follow-up brief"].parent_job_id == completed.id
     assert by_topic["Follow-up brief"].parent_topic == "Completed brief"
     assert by_topic["Completed brief"].parent_job_id is None
+    assert by_topic["Completed brief"].follow_ups == [
+        "How did exits change in 2024?",
+        "Which sectors recovered first?",
+    ]
+    assert by_topic["Failed brief"].follow_ups == []
 
 
 async def test_list_jobs_pagination(async_session: AsyncSession) -> None:
