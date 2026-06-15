@@ -54,7 +54,6 @@ jobs:
       - name: Run evals
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
           EVAL_JUDGE_MODEL: ${{ github.event.inputs.judge_model }}
           EVAL_SCOUT_MODELS: ${{ github.event.inputs.scout_models }}
           EVAL_SCRIBE_MODELS: ${{ github.event.inputs.scribe_models }}

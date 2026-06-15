@@ -1,110 +1,18 @@
 [
   {
     "id": "grid_storage",
-    "topic": "Grid-scale battery storage costs and deployment, 2020-2024",
-    "curated_sources": [
-      {
-        "url": "https://www.iea.org/reports/batteries-and-secure-energy-transitions",
-        "title": "Batteries and Secure Energy Transitions (IEA, 2024)",
-        "tier": "high"
-      },
-      {
-        "url": "https://www.nrel.gov/docs/fy24osti/87819.pdf",
-        "title": "2023 Grid Energy Storage Technology Cost and Performance Assessment (NREL, 2024)",
-        "tier": "high"
-      },
-      {
-        "url": "https://www.lazard.com/research-insights/2024-levelized-cost-of-energy-plus/",
-        "title": "Lazard Levelized Cost of Energy Plus 2024",
-        "tier": "high"
-      },
-      {
-        "url": "https://en.wikipedia.org/wiki/Battery_storage_power_station",
-        "title": "Battery storage power station (Wikipedia)",
-        "tier": "medium"
-      }
-    ],
-    "notes": "curated 2025-01; IEA and NREL are the primary authoritative public sources for this topic"
+    "topic": "Grid-scale battery storage costs and deployment, 2020-2024"
   },
   {
     "id": "llm_scaling",
-    "topic": "Large language model scaling laws and compute efficiency, 2022-2024",
-    "curated_sources": [
-      {
-        "url": "https://arxiv.org/abs/2203.15556",
-        "title": "Training Compute-Optimal Large Language Models (Hoffmann et al., 2022)",
-        "tier": "high"
-      },
-      {
-        "url": "https://arxiv.org/abs/2001.08361",
-        "title": "Scaling Laws for Neural Language Models (Kaplan et al., 2020)",
-        "tier": "high"
-      },
-      {
-        "url": "https://openai.com/research/gpt-4",
-        "title": "GPT-4 Technical Report (OpenAI, 2023)",
-        "tier": "high"
-      },
-      {
-        "url": "https://en.wikipedia.org/wiki/Large_language_model",
-        "title": "Large language model (Wikipedia)",
-        "tier": "medium"
-      }
-    ],
-    "notes": "curated 2025-01; arXiv papers are the primary references for scaling law research"
+    "topic": "Large language model scaling laws and compute efficiency, 2022-2024"
   },
   {
     "id": "crispr_sickle_cell",
-    "topic": "FDA approval of CRISPR gene therapy Casgevy for sickle cell disease, 2023",
-    "curated_sources": [
-      {
-        "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-gene-therapies-treat-patients-sickle-cell-disease",
-        "title": "FDA Approves First Gene Therapies to Treat Patients with Sickle Cell Disease (FDA, 2023)",
-        "tier": "high"
-      },
-      {
-        "url": "https://ir.crisprtx.com/news-releases/news-release-details/vertex-and-crispr-therapeutics-announce-us-fda-approval",
-        "title": "Vertex and CRISPR Therapeutics Announce US FDA Approval of CASGEVY (CRISPR Therapeutics)",
-        "tier": "medium"
-      },
-      {
-        "url": "https://www.cnbc.com/2023/12/08/casgevy-first-crispr-gene-editing-treatment-approved-in-us.html",
-        "title": "Casgevy: First CRISPR gene-editing treatment approved in U.S. (CNBC, 2023)",
-        "tier": "medium"
-      },
-      {
-        "url": "https://www.nbcnews.com/health/health-news/fda-approves-cure-sickle-cell-disease-first-treatment-use-gene-editing-rcna127979",
-        "title": "FDA approves first sickle cell treatment to use CRISPR (NBC News, 2023)",
-        "tier": "medium"
-      }
-    ],
-    "notes": "curated 2025-01 from real Exa results; fda.gov is the authoritative primary source, company IR and major outlets are secondary"
+    "topic": "FDA approval of CRISPR gene therapy Casgevy for sickle cell disease, 2023"
   },
   {
     "id": "glp1_cardiovascular",
-    "topic": "Semaglutide cardiovascular outcomes in the SELECT trial for obesity without diabetes",
-    "curated_sources": [
-      {
-        "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa2307563",
-        "title": "Semaglutide and Cardiovascular Outcomes in Obesity without Diabetes (NEJM)",
-        "tier": "high"
-      },
-      {
-        "url": "https://clinicaltrials.gov/study/NCT03574597",
-        "title": "SELECT trial registry entry NCT03574597 (ClinicalTrials.gov)",
-        "tier": "high"
-      },
-      {
-        "url": "https://www.acc.org/latest-in-cardiology/clinical-trials/2023/11/09/15/04/select",
-        "title": "SELECT trial summary (American College of Cardiology, 2023)",
-        "tier": "high"
-      },
-      {
-        "url": "https://www.globenewswire.com/news-release/2023/11/11/2778596/0/en/Novo-Nordisk-A-S-Semaglutide-2-4-mg-Wegovy-cardiovascular-outcomes-data-presented-at-American-Heart-Association-Scientific-Sessions-and-simultaneously-published-in-New-England-Jour.html",
-        "title": "Novo Nordisk: Semaglutide 2.4 mg cardiovascular outcomes data (GlobeNewswire, 2023)",
-        "tier": "medium"
-      }
-    ],
-    "notes": "curated 2025-01 from real Exa results; NEJM, ClinicalTrials.gov and ACC are authoritative, the sponsor press release is secondary"
+    "topic": "Semaglutide cardiovascular outcomes in the SELECT trial for obesity without diabetes"
   }
 ]

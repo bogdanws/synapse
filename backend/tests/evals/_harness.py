@@ -98,20 +98,6 @@ Consider: coverage of the topic, mutual distinctness, searchability, and specifi
 Respond with JSON: {"reasoning": "<2-3 sentences>", "score": <integer 1-5>}
 """
 
-RUBRIC_SOURCE_RELEVANCE = """\
-You are an expert research librarian evaluating source relevance.
-
-Rate the overall relevance of the retrieved sources to the research topic on a 1-5 scale:
-
-1 — Very poor: most sources are off-topic or only tangentially related.
-2 — Below average: some relevant sources but many miss the research topic.
-3 — Acceptable: majority of sources address the topic at least partially.
-4 — Good: most sources are clearly relevant with few off-topic results.
-5 — Excellent: nearly all sources directly and substantively address the topic.
-
-Respond with JSON: {"reasoning": "<2-3 sentences>", "score": <integer 1-5>}
-"""
-
 RUBRIC_COHERENCE = """\
 You are an expert editor evaluating research report coherence.
 

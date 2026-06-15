@@ -9,7 +9,6 @@ the **Agent Evals** GitHub Actions workflow (`workflow_dispatch`).
 ```bash
 cd backend
 export OPENROUTER_API_KEY=...   # required: agent + judge calls
-export EXA_API_KEY=...          # required for Scout only
 
 # Smoke-run Scribe with one cheap model and two cases (~5 judge calls, < $0.01):
 export EVAL_JUDGE_MODEL=openai/gpt-4o-mini
@@ -24,11 +23,11 @@ uv run pytest tests/evals/ -m agent_eval -k scribe -s
 After a run, `tests/evals/results/` contains:
 - `<UTC-timestamp>.json` — every raw metric row
 - `<UTC-timestamp>.md` — leaderboard table per agent
-- `<UTC-timestamp>_outputs.md` — full agent transcripts (sub-questions +
-  scored sources for Scout, the rendered report for Scribe, every verdict next
-  to its ground-truth label for Critic) so you can manually verify *how the
-  output actually looks*, not just the scores. Critic transcripts mark each
-  claim where the model's flag disagrees with the label (`<-- MISMATCH`).
+- `<UTC-timestamp>_outputs.md` — full agent transcripts (sub-questions for
+  Scout, the rendered report for Scribe, every verdict next to its ground-truth
+  label for Critic) so you can manually verify *how the output actually looks*,
+  not just the scores. Critic transcripts mark each claim where the model's flag
+  disagrees with the label (`<-- MISMATCH`).
 
 ## Environment variables
 
@@ -66,23 +65,18 @@ committing to `unsupported`/`contradicted`.
 
 ### `data/scout_topics.json`
 
-Array of topics with human-curated reference sources. The `curated_recall`
-metric counts how many curated source domains Scout rediscovers.
+Array of research topics. The Scout eval runs each topic through
+`ScoutAgent.decompose` and judges the resulting sub-questions for query quality;
+no sources are retrieved or scored, so the eval has no external dependencies.
 
 ```json
 [
   {
     "id": "short_snake_case_id",
-    "topic": "Full research topic string",
-    "curated_sources": [
-      {"url": "https://...", "title": "...", "tier": "high|medium|low"}
-    ],
-    "notes": "curator, date, rationale"
+    "topic": "Full research topic string"
   }
 ]
 ```
-
-`tier` midpoints for calibration: `high=0.85`, `medium=0.55`, `low=0.30`.
 
 ### `data/scribe_cases.json`
 

@@ -35,6 +35,11 @@ def eval_recorder() -> Iterator[EvalRecorder]:
 
 @pytest.fixture
 async def http_client() -> AsyncIterator[httpx.AsyncClient]:
-    """Function-scoped async HTTP client for Scout's Exa search calls."""
+    """Managed async client used only to satisfy ScoutAgent's constructor.
+
+    The scout eval exercises `decompose`, which makes no HTTP calls; this client
+    is wired into an unauthenticated `ExaSearchClient` purely so the agent can be
+    built without reading EXA_API_KEY. No requests are issued through it.
+    """
     async with httpx.AsyncClient() as client:
         yield client

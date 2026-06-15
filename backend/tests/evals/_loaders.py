@@ -31,38 +31,14 @@ _DATA_DIR = Path(__file__).parent / "data"
 
 
 @dataclass
-class CuratedSource:
-    url: str
-    title: str
-    tier: str  # "high" | "medium" | "low"
-
-
-@dataclass
 class ScoutTopic:
     id: str
     topic: str
-    curated_sources: list[CuratedSource]
-    notes: str = ""
 
 
 def load_scout_topics() -> list[ScoutTopic]:
     raw_list: list[dict[str, Any]] = json.loads((_DATA_DIR / "scout_topics.json").read_text())
-    return [
-        ScoutTopic(
-            id=item["id"],
-            topic=item["topic"],
-            curated_sources=[
-                CuratedSource(
-                    url=cs["url"],
-                    title=cs["title"],
-                    tier=cs["tier"],
-                )
-                for cs in item["curated_sources"]
-            ],
-            notes=item.get("notes", ""),
-        )
-        for item in raw_list
-    ]
+    return [ScoutTopic(id=item["id"], topic=item["topic"]) for item in raw_list]
 
 
 # ---- Scribe -----------------------------------------------------------------
