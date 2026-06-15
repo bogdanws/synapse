@@ -28,7 +28,7 @@ const authSearchSchema = z.object({
   redirect: z.string().optional(),
 })
 
-function getSafeAuthRedirect(redirectTo: string | undefined): string {
+export function getSafeAuthRedirect(redirectTo: string | undefined): string {
   if (!redirectTo || !redirectTo.startsWith('/') || redirectTo.startsWith('//')) {
     return '/research/new'
   }

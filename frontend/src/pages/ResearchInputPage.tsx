@@ -2,8 +2,6 @@ import { useRef, useEffect, useCallback } from 'react'
 import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { z } from 'zod'
-
 import { AppNavbar, SynapseBrandLink } from '../components/AppNavbar'
 import { Button } from '../components/ui/Button'
 import { Select, type SelectOption } from '../components/ui/Select'
@@ -17,8 +15,7 @@ import { useStartResearch } from '../hooks/useStartResearch'
 import { ApiError } from '../services/api'
 import { ALLOWED_MODELS } from '../constants/models'
 import type { JobStatus, JobSummary } from '../types/api'
-
-const allowedModelIds: string[] = ALLOWED_MODELS.map((m) => m.id)
+import { researchFormSchema, type ResearchFormData } from './researchFormSchema'
 
 // How many briefs the "recent" rail shows before deferring to the full Library.
 const RECENT_LIMIT = 6
@@ -38,22 +35,7 @@ function formatRecentDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 }
 
-const formSchema = z.object({
-  topic: z.string().min(10, 'Topic must be at least 10 characters').max(2000),
-  depth: z.enum(['shallow', 'standard', 'deep']),
-  language: z.string(),
-  models: z
-    .object({
-      scout: z.string(),
-      scribe: z.string(),
-      critic: z.string(),
-    })
-    .refine((vals) => Object.values(vals).every((v: string) => allowedModelIds.includes(v)), {
-      message: 'Invalid model selection',
-    }),
-})
-
-type FormData = z.infer<typeof formSchema>
+type FormData = ResearchFormData
 
 // How many recommended follow-ups the "start from a recent question" grid shows.
 const RECENT_QUESTION_LIMIT = 4
@@ -140,7 +122,7 @@ export default function ResearchInputPage() {
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(researchFormSchema),
     defaultValues: {
       topic: '',
       depth: 'standard',

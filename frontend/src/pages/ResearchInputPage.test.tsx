@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -119,6 +119,47 @@ describe('ResearchInputPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/topic must be at least 10 characters/i)).toBeInTheDocument()
+    })
+  })
+
+  it('shows validation error when topic exceeds 2000 characters', async () => {
+    renderPage()
+
+    const textarea = screen.getByPlaceholderText(/type your research topic here/i)
+    fireEvent.change(textarea, { target: { value: 'a'.repeat(2001) } })
+
+    const button = screen.getByRole('button', { name: /start brief/i })
+    await userEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+    expect(mockStartResearch).not.toHaveBeenCalled()
+  })
+
+  it('submits the selected research depth', async () => {
+    mockStartResearch.mockResolvedValue({
+      id: 'job-deep',
+      topic: 'Test topic',
+      status: 'pending',
+    })
+
+    renderPage()
+
+    const textarea = screen.getByPlaceholderText(/type your research topic here/i)
+    await userEvent.type(textarea, 'Why has Eastern European venture funding declined?')
+
+    await userEvent.click(screen.getByRole('combobox', { name: /research depth/i }))
+    await userEvent.click(screen.getByRole('option', { name: /deep/i }))
+
+    await userEvent.click(screen.getByRole('button', { name: /start brief/i }))
+
+    await waitFor(() => {
+      expect(mockStartResearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          depth: 'deep',
+        }),
+      )
     })
   })
 
