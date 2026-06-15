@@ -17,9 +17,7 @@ export function useDeleteResearch() {
     mutationFn: async (jobId: string): Promise<void> => {
       // unwrapClientResult turns the client's `{ data, error }` into a thrown ApiError on failure
       // (e.g. 404 for a brief that's already gone), so the UI can react.
-      unwrapClientResult(
-        await deleteResearchApiResearchJobIdDelete({ path: { job_id: jobId } }),
-      )
+      unwrapClientResult(await deleteResearchApiResearchJobIdDelete({ path: { job_id: jobId } }))
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['research', 'list'] })
