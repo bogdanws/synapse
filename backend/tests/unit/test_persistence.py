@@ -13,6 +13,7 @@ import pytest
 from app.models import orm
 from app.models.research import (
     Contradiction,
+    ContradictionPosition,
     JobStatus,
     ReportSection,
     ScribeReport,
@@ -71,7 +72,15 @@ def test_report_body_jsonb_is_round_trippable_json() -> None:
             )
         ],
         sources=[_source("s1")],
-        contradictions=[Contradiction(description="d", source_ids=["s1"])],
+        contradictions=[
+            Contradiction(
+                topic="t",
+                positions=[
+                    ContradictionPosition(statement="a", source_ids=["s1"]),
+                    ContradictionPosition(statement="b", source_ids=["s2"]),
+                ],
+            )
+        ],
         follow_ups=["What about Y?"],
         generated_at=datetime.now(UTC),
         model="m",
@@ -91,7 +100,9 @@ def test_report_body_jsonb_is_round_trippable_json() -> None:
     assert blob["sections"][0]["id"] == "sec1"
     assert isinstance(blob["sources"], list)
     assert blob["sources"][0]["id"] == "s1"
-    assert blob["contradictions"][0]["description"] == "d"
+    assert blob["contradictions"][0]["topic"] == "t"
+    assert blob["contradictions"][0]["positions"][0]["statement"] == "a"
+    assert blob["contradictions"][0]["positions"][0]["source_ids"] == ["s1"]
     assert blob["follow_ups"] == ["What about Y?"]
 
 

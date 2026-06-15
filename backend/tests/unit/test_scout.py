@@ -262,18 +262,18 @@ async def test_score_combines_domain_prior_with_llm_judgement(
     scored = await agent.score(
         "topic",
         [
-            _raw("https://www.nature.com/articles/x"),  # prior 0.95
-            _raw("https://random-blog.example/post"),  # default prior 0.55
+            _raw("https://www.nature.com/articles/x"),  # known prior 0.95
+            _raw("https://random-blog.example/post"),  # unknown host: no prior
         ],
     )
 
     assert len(scored) == 2
     assert scored[0].id == "s1"
     assert scored[1].id == "s2"
-    # nature * 1.0 ≈ 0.95
-    assert scored[0].credibility == pytest.approx(0.95, abs=1e-3)
-    # default 0.55 * 0.5 = 0.275
-    assert scored[1].credibility == pytest.approx(0.275, abs=1e-3)
+    # known host blends toward the prior: 0.7 * 0.95 + 0.3 * 1.0 = 0.965
+    assert scored[0].credibility == pytest.approx(0.965, abs=1e-3)
+    # unknown host defers entirely to the LLM rating
+    assert scored[1].credibility == pytest.approx(0.5, abs=1e-3)
     assert scored[0].relevance == pytest.approx(0.8)
     assert scored[1].relevance == pytest.approx(0.5)
 
@@ -290,7 +290,7 @@ async def test_score_falls_back_to_neutral_when_llm_call_fails(
         "topic",
         [_raw("https://www.nature.com/articles/x")],
     )
-    # Soft failure: prior alone (≈ 0.95 * 1.0 default), neutral relevance 0.5.
+    # Soft failure: no LLM rating, so credibility anchors on the prior alone; neutral relevance 0.5.
     assert scored[0].relevance == pytest.approx(0.5)
     assert scored[0].credibility == pytest.approx(0.95, abs=1e-3)
 

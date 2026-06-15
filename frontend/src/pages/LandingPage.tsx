@@ -24,7 +24,7 @@ export default function LandingPage() {
         <LandingHero
           ctaText={ctaText}
           onCtaClick={() => navigate({ to: ctaTo })}
-          onSampleClick={() => navigate({ to: ctaTo })}
+          onSampleClick={() => navigate({ to: '/sample-report' })}
         />
       </div>
       <AgentsSection />

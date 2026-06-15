@@ -9,6 +9,8 @@ import pytest
 
 from app.models.research import (
     ClaimFlag,
+    Contradiction,
+    ContradictionPosition,
     CriticAnnotations,
     ReportSection,
     ScribeReport,
@@ -205,6 +207,140 @@ def test_rejects_ref_without_caret_to_unknown_source() -> None:
     )
     with pytest.raises(ScribeValidationError, match="\\['s99'\\]"):
         validate_scribe_report(_report([section]))
+
+
+def test_rejects_citation_outside_claim_span() -> None:
+    """A `[^sX]` that is not wrapped in a claim span is unverifiable by the Critic.
+
+    Regression for a report whose Scribe model emitted bare footnotes for every
+    sentence and wrapped none of them, yielding a report with zero claims.
+    """
+    section = _section(
+        "sec1",
+        body_md=(
+            'Wrapped <span data-claim="sec1.c1">claim[^s1]</span>. '
+            "But this fact is cited outside any span[^s2]."
+        ),
+    )
+    with pytest.raises(ScribeValidationError, match="outside a <span data-claim> span"):
+        validate_scribe_report(_report([section]))
+
+
+def test_rejects_section_with_only_orphan_citations() -> None:
+    """The exact failure mode seen in production: prose with citations, no spans."""
+    section = _section(
+        "sec1",
+        body_md="DeepSeek V4 Pro was released under an MIT license[^s1][^s2].",
+    )
+    with pytest.raises(ScribeValidationError, match="outside a <span data-claim> span"):
+        validate_scribe_report(_report([section]))
+
+
+def test_accepts_footnote_definition_outside_span() -> None:
+    """A definition line (`[^sX]: …`) is bibliography-like, not an in-prose claim."""
+    section = _section(
+        "sec1",
+        body_md=('<span data-claim="sec1.c1">claim[^s1]</span>\n\n[^s1]: Source one.\n'),
+    )
+    validate_scribe_report(_report([section]))
+
+
+# ---- contradictions --------------------------------------------------------
+
+
+def _report_with_contradictions(
+    contradictions: list[Contradiction], sources: list[Source]
+) -> ScribeReport:
+    section = _section("sec1", body_md='<span data-claim="sec1.c1">a[^s1]</span>')
+    base = _report([section], sources=sources)
+    return ScribeReport(**{**base.model_dump(), "contradictions": contradictions})
+
+
+def test_contradiction_with_attributed_positions_passes() -> None:
+    report = _report_with_contradictions(
+        [
+            Contradiction(
+                topic="growth direction",
+                positions=[
+                    ContradictionPosition(statement="s1 reports growth", source_ids=["s1"]),
+                    ContradictionPosition(statement="s2 reports decline", source_ids=["s2"]),
+                ],
+            )
+        ],
+        sources=[_source("s1"), _source("s2")],
+    )
+    validate_scribe_report(report)
+
+
+def test_empty_contradictions_list_passes() -> None:
+    section = _section("sec1", body_md='<span data-claim="sec1.c1">a[^s1]</span>')
+    validate_scribe_report(_report([section]))
+
+
+def test_contradiction_with_unknown_source_id_raises() -> None:
+    report = _report_with_contradictions(
+        [
+            Contradiction(
+                topic="conflict",
+                positions=[
+                    ContradictionPosition(statement="x", source_ids=["s1"]),
+                    ContradictionPosition(statement="y", source_ids=["s99"]),
+                ],
+            )
+        ],
+        sources=[_source("s1"), _source("s2")],
+    )
+    with pytest.raises(ScribeValidationError, match="s99"):
+        validate_scribe_report(report)
+
+
+def test_contradiction_with_fewer_than_two_positions_raises() -> None:
+    report = _report_with_contradictions(
+        [
+            Contradiction(
+                topic="conflict",
+                positions=[ContradictionPosition(statement="only one side", source_ids=["s1"])],
+            )
+        ],
+        sources=[_source("s1"), _source("s2")],
+    )
+    with pytest.raises(ScribeValidationError, match=">= 2 positions"):
+        validate_scribe_report(report)
+
+
+def test_contradiction_position_without_sources_raises() -> None:
+    report = _report_with_contradictions(
+        [
+            Contradiction(
+                topic="conflict",
+                positions=[
+                    ContradictionPosition(statement="x", source_ids=["s1"]),
+                    ContradictionPosition(statement="y", source_ids=[]),
+                ],
+            )
+        ],
+        sources=[_source("s1"), _source("s2")],
+    )
+    with pytest.raises(ScribeValidationError, match="at least one source"):
+        validate_scribe_report(report)
+
+
+def test_source_on_two_positions_raises() -> None:
+    """A single source cannot hold both sides of a disagreement."""
+    report = _report_with_contradictions(
+        [
+            Contradiction(
+                topic="conflict",
+                positions=[
+                    ContradictionPosition(statement="x", source_ids=["s1"]),
+                    ContradictionPosition(statement="y", source_ids=["s1"]),
+                ],
+            )
+        ],
+        sources=[_source("s1"), _source("s2")],
+    )
+    with pytest.raises(ScribeValidationError, match="more than one position"):
+        validate_scribe_report(report)
 
 
 # ---- critic validation -----------------------------------------------------

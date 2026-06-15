@@ -59,12 +59,40 @@ export type ClaimFlag = {
 
 /**
  * Contradiction
+ *
+ * A factual disagreement between sources, decomposed into opposing sides.
+ *
+ * `topic` names the dimension under dispute (e.g. "First commercial operation
+ * date"); `positions` holds the >= 2 mutually exclusive sides, each attributed
+ * to its own source(s). Invariants beyond these types — >= 2 positions, every
+ * source known, no source on two sides — are enforced in
+ * `app.services.validation`.
  */
 export type Contradiction = {
     /**
-     * Description
+     * Topic
      */
-    description: string;
+    topic: string;
+    /**
+     * Positions
+     */
+    positions: Array<ContradictionPosition>;
+};
+
+/**
+ * ContradictionPosition
+ *
+ * One side of a disagreement: a statement and the sources that hold it.
+ *
+ * Attributing the statement to its source(s) is the whole point — a flat list
+ * of `source_ids` per contradiction can't tell the reader which source claims
+ * what. `source_ids` lists the sources advancing this position (>= 1).
+ */
+export type ContradictionPosition = {
+    /**
+     * Statement
+     */
+    statement: string;
     /**
      * Source Ids
      */

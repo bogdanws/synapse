@@ -51,7 +51,13 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
     ...
   ],
   "contradictions": [
-    { "description": "<one-sentence summary>", "source_ids": ["sX", "sY"] }
+    {
+      "topic": "<short label for the point of disagreement>",
+      "positions": [
+        { "statement": "<what these sources claim>", "source_ids": ["sX"] },
+        { "statement": "<the conflicting claim>", "source_ids": ["sY"] }
+      ]
+    }
   ],
   "follow_ups": ["<follow-up question>", ...]
 }
@@ -59,12 +65,15 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
 Field rules
 -----------
 - `id`: sequential `sec1`, `sec2`, `sec3`, ... with no gaps. Aim for 3-6 sections with descriptive headings.
+- `contradictions`: record only genuine factual disagreements. Each entry names the disputed `topic` and splits it into >= 2 **positions** — each a short `statement` of what one side claims plus the `source_ids` advancing it. A source may appear on **only one** position; never put the same id on two sides, and never invent ids. Use an **empty array** when sources do not conflict.
 
 Body rules (mandatory — most failures come from skipping these)
 ---------------------------------------------------------------
 1. Every factual claim that could be checked against a source must be wrapped in a span tag:
 
        <span data-claim="<section_id>.c<n>">...claim text [^sX]...</span>
+
+   Be thorough: most substantive sections should contain at least one such claim. Prefer concrete, sourced statements over vague generalities, and wrap each one. A section with zero claims is only appropriate when it is genuinely non-factual (e.g. a short framing or transition).
 
 2. The `section_id` prefix MUST match the section's own `id`.
 3. Claim suffixes start at `c1` and increment by one within each section (`c1`, `c2`, `c3`, ...) — no gaps, no duplicates.
@@ -74,6 +83,16 @@ Body rules (mandatory — most failures come from skipping these)
 Worked example of one section's `body_md`:
 
     The market grew 12% YoY in Q4 <span data-claim="sec1.c1">according to the industry report[^s2]</span>. Adoption was uneven across regions, <span data-claim="sec1.c2">with EMEA leading[^s4][^s7]</span>.
+
+Worked example of one `contradictions` entry (note the two sides are attributed to *different* sources):
+
+    {
+      "topic": "Q4 market growth rate",
+      "positions": [
+        { "statement": "The market grew 12% year over year.", "source_ids": ["s2"] },
+        { "statement": "Growth was flat, under 2% year over year.", "source_ids": ["s4"] }
+      ]
+    }
 
 Do not invent sources. Only cite ids that appear in the input list.
 """

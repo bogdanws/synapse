@@ -1,6 +1,6 @@
 """Scout — research agent.
 
-Breaks a user topic into sub-questions, runs each sub-question through Exa, falls back to trafilatura when Exa returns no body text, deduplicates by URL, and produces a final list of `Source` records. Each source's credibility is the product of a domain-prior heuristic (`app.services.credibility`) and a per-source LLM rating; relevance comes from the same LLM pass.
+Breaks a user topic into sub-questions, runs each sub-question through Exa, falls back to trafilatura when Exa returns no body text, deduplicates by URL, and produces a final list of `Source` records. Each source's credibility blends a domain-prior heuristic (`app.services.credibility`) with a per-source LLM rating; relevance comes from the same LLM pass.
 
 The agent class is pure: it exposes async methods that take and return data. Event publishing and graph state lives in the LangGraph node wrapper (`app.agents.scout_graph`) so the agent stays trivially unit-testable in isolation.
 """
@@ -16,7 +16,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from app.models.research import Source
-from app.services.credibility import domain_prior
+from app.services.credibility import combine_credibility, domain_prior
 from app.services.llm import (
     StructuredRetryError,
     build_chat_model,
@@ -185,7 +185,7 @@ class ScoutAgent:
     async def score(self, topic: str, sources: list[_RawSource]) -> list[Source]:
         """Score relevance and credibility, then assign final short_ids and produce `Source` records.
 
-        Final credibility is `domain_prior(url) * llm_credibility`. If the LLM rating call fails, we fall back to the prior alone so the pipeline still progresses with a usable but less-discerning score.
+        Final credibility blends the domain prior with the LLM rating via `combine_credibility`: unknown hosts defer to the LLM, known hosts anchor on the curated prior. If the LLM rating is missing (the call failed), we fall back to the prior alone — or a neutral score when the host is also unknown.
         """
         if not sources:
             return []
@@ -197,7 +197,7 @@ class ScoutAgent:
             prior = domain_prior(src.url)
             rating = ratings_by_index.get(i)
             relevance = rating.relevance if rating is not None else 0.5
-            llm_cred = rating.credibility_llm if rating is not None else 1.0
+            llm_cred = rating.credibility_llm if rating is not None else None
             scored.append(
                 Source(
                     id=f"s{i + 1}",
@@ -205,7 +205,7 @@ class ScoutAgent:
                     title=src.title or src.url,
                     author=src.author,
                     published_at=src.published_at,
-                    credibility=round(prior * llm_cred, 4),
+                    credibility=round(combine_credibility(prior, llm_cred), 4),
                     relevance=round(relevance, 4),
                     snippet=src.snippet,
                 )
