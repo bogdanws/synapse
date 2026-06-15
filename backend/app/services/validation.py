@@ -53,6 +53,33 @@ _FOOTNOTE_REF_IN_PROSE_RE = re.compile(r"\[\^?(s\d+)\](?!\s*:)")
 _SECTION_ID_RE = re.compile(r"^sec(\d+)$")
 _CLAIM_LOCAL_RE = re.compile(r"^c(\d+)$")
 
+# Any `<span …>`/`</span>` tag. Used to strip claim markup out of the executive
+# summary, which renders as plain text and so must not carry the body's
+# span/citation convention.
+_SPAN_TAG_RE = re.compile(r"</?span\b[^>]*>", re.IGNORECASE)
+# Whitespace left dangling in front of punctuation after a citation is removed
+# (e.g. "Council [^s2]." -> "Council ." -> "Council.").
+_SPACE_BEFORE_PUNCT_RE = re.compile(r"[ \t]+([.,;:!?])")
+
+# Opening `<span data-claim="…">` tag split into (prefix)(id)(suffix) so the
+# repair pass can rewrite just the id while leaving any other attributes intact.
+_CLAIM_ATTR_RE = re.compile(
+    r"(<span\b[^>]*\bdata-claim\s*=\s*['\"])([^'\"]+)(['\"][^>]*>)",
+    re.IGNORECASE,
+)
+# Regions the orphan-citation repair must never reach into: fenced code blocks
+# and inline code. A `[^sX]`-looking token inside code is not a citation.
+_FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
+_INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
+# Leading block markup on a line (blockquote markers, list bullet, ordered-list
+# number, ATX heading) that should sit *outside* a wrapped claim span.
+_LEAD_MARKER_RE = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+][ \t]+|\d+[.)][ \t]+|#{1,6}[ \t]+)?")
+# End of a sentence: terminal punctuation, an optional closing quote/bracket,
+# then whitespace. Used to find where the clause containing an orphan citation
+# begins so we wrap the sentence rather than the whole paragraph.
+_SENTENCE_END_RE = re.compile(r"[.!?][\"')\]]?[ \t]+")
+_WORD_RE = re.compile(r"[A-Za-z0-9]")
+
 
 class ScribeValidationError(ValueError):
     """Raised when a Scribe report violates the structural contract.
@@ -122,7 +149,165 @@ def validate_critic_annotations(annotations: CriticAnnotations, report: ScribeRe
         _validate_flag_section_match(flag)
 
 
+def strip_summary_markup(summary_md: str) -> str:
+    """Remove claim spans and footnote citations from an executive summary.
+
+    The summary renders as standalone prose, not alongside the source list, so a
+    `<span data-claim>` wrapper or a `[^sX]` reference has nothing to resolve
+    against and shows up as literal noise. Models nonetheless carry the body's
+    citation convention into the summary, so we strip it here rather than trust
+    the prompt alone: unwrap any span (keeping its text) and drop footnote refs,
+    then tidy the whitespace the removals leave behind.
+
+    Markdown emphasis, links, and the like are intentionally preserved — the
+    field is GFM and only the claim/citation markup is out of place.
+    """
+    text = _FOOTNOTE_REF_RE.sub("", summary_md)
+    text = _SPAN_TAG_RE.sub("", text)
+    text = _SPACE_BEFORE_PUNCT_RE.sub(r"\1", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    return text.strip()
+
+
+def repair_orphan_citations(body_md: str, section_id: str) -> str:
+    """Wrap orphan footnote citations in claim spans so a section can satisfy the Scribe contract.
+
+    The single most common Scribe failure is a real citation for a real claim
+    that the model simply forgot to wrap: a bare `[^sX]` sitting in prose
+    outside any `<span data-claim>`. Unlike a hallucinated source id or a
+    non-sequential section id, that is a *markup* slip, not a content error, and
+    is mechanically fixable. We do the wrap server-side here instead of bouncing
+    the whole job back to the model and hoping a weaker model gets it right on
+    the (single) retry.
+
+    For each orphan citation — or run of adjacent citations like `[^s4][^s7]` —
+    this wraps the sentence containing it in a claim span, then renumbers every
+    claim id in the section so the `c1, c2, …` sequencing invariant still holds
+    after the insertion. It is deliberately conservative: it leaves the body
+    untouched when there is nothing to repair (so it never perturbs an otherwise
+    valid section or masks an unrelated validation error), and it bails on any
+    citation whose surrounding context is risky to rewrite — tables, code, or
+    text that would overlap an existing span. Anything it declines to fix still
+    flows through to `validate_scribe_report`, which fails the section as before.
+
+    Idempotent: running it on already-repaired prose is a no-op.
+    """
+    protected = _protected_spans(body_md)
+    orphans = [
+        m for m in _FOOTNOTE_REF_IN_PROSE_RE.finditer(body_md) if not _within(m.start(), protected)
+    ]
+    if not orphans:
+        return body_md
+
+    groups = _group_adjacent(body_md, orphans)
+    edits: list[tuple[int, int]] = []
+    for group_start, group_end in groups:
+        region = _claim_region(body_md, group_start, group_end, protected)
+        if region is not None:
+            edits.append(region)
+
+    if not edits:
+        return body_md
+
+    wrapped = _wrap_regions(body_md, edits, section_id)
+    return _renumber_claims(wrapped, section_id)
+
+
 # ---- internals --------------------------------------------------------------
+
+
+def _protected_spans(body_md: str) -> list[tuple[int, int]]:
+    """Character intervals the repair must not split: claim spans and code."""
+    intervals = [(m.start(), m.end()) for m in _CLAIM_SPAN_BLOCK_RE.finditer(body_md)]
+    intervals += [(m.start(), m.end()) for m in _FENCED_CODE_RE.finditer(body_md)]
+    intervals += [(m.start(), m.end()) for m in _INLINE_CODE_RE.finditer(body_md)]
+    intervals.sort()
+    return intervals
+
+
+def _within(pos: int, intervals: list[tuple[int, int]]) -> bool:
+    return any(start <= pos < end for start, end in intervals)
+
+
+def _group_adjacent(body_md: str, matches: list[re.Match[str]]) -> list[tuple[int, int]]:
+    """Merge citations separated only by spaces (`[^s4][^s7]`) into one claim."""
+    groups: list[tuple[int, int]] = []
+    for match in matches:
+        if groups and body_md[groups[-1][1] : match.start()].strip(" \t") == "":
+            groups[-1] = (groups[-1][0], match.end())
+        else:
+            groups.append((match.start(), match.end()))
+    return groups
+
+
+def _claim_region(
+    body_md: str,
+    group_start: int,
+    group_end: int,
+    protected: list[tuple[int, int]],
+) -> tuple[int, int] | None:
+    """Find the span `[start, group_end)` to wrap, or `None` if unsafe to repair.
+
+    The wrap covers the sentence on the citation's own line, minus any leading
+    block markup (bullets, headings). Returns `None` rather than guess when the
+    line looks like a table, or the claim text would overlap an existing span.
+    """
+    line_start = body_md.rfind("\n", 0, group_start) + 1
+    lead = _LEAD_MARKER_RE.match(body_md, line_start, group_start)
+    lead_start = lead.end() if lead else line_start
+
+    sentence_start = lead_start
+    last_end: re.Match[str] | None = None
+    for match in _SENTENCE_END_RE.finditer(body_md, lead_start, group_start):
+        last_end = match
+    if last_end is not None and _WORD_RE.search(body_md, last_end.end(), group_start):
+        # Only cut to the sentence boundary if real words remain after it;
+        # otherwise the citation trails a finished sentence and we keep the line.
+        sentence_start = last_end.end()
+    text_start = sentence_start
+
+    for start, end in protected:
+        if start < group_end and end > text_start:
+            if end <= group_start:
+                text_start = max(text_start, end)
+            else:
+                # A protected region overlaps the claim text we'd wrap.
+                return None
+
+    region = body_md[text_start:group_start]
+    if "|" in region or "\n" in region:
+        return None
+    return (text_start, group_end)
+
+
+def _wrap_regions(body_md: str, edits: list[tuple[int, int]], section_id: str) -> str:
+    """Insert claim spans around each region. Ids are placeholders; see renumber."""
+    parts: list[str] = []
+    cursor = 0
+    for start, end in sorted(edits):
+        parts.append(body_md[cursor:start])
+        parts.append(f'<span data-claim="{section_id}.c0">')
+        parts.append(body_md[start:end])
+        parts.append("</span>")
+        cursor = end
+    parts.append(body_md[cursor:])
+    return "".join(parts)
+
+
+def _renumber_claims(body_md: str, section_id: str) -> str:
+    """Rewrite every claim id to `<section_id>.c<n>` in document order.
+
+    Run only after an insertion: re-sequencing in document order is what keeps
+    the `c1, c2, …` invariant intact once a new span lands mid-body. Skipping it
+    when nothing was inserted is deliberate — we must not silently fix claim-id
+    mistakes the model made on its own, which the validator should still surface.
+    """
+    counter = iter(range(1, 1_000_000))
+
+    def _rewrite(match: re.Match[str]) -> str:
+        return f"{match.group(1)}{section_id}.c{next(counter)}{match.group(3)}"
+
+    return _CLAIM_ATTR_RE.sub(_rewrite, body_md)
 
 
 def _validate_section_ids(sections: list[ReportSection]) -> None:

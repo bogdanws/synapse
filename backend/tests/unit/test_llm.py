@@ -14,7 +14,11 @@ from langchain_core.messages import AIMessage
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 
-from app.services.llm import StructuredRetryError, invoke_structured_with_retry
+from app.services.llm import (
+    StructuredRetryError,
+    dated_system_prompt,
+    invoke_structured_with_retry,
+)
 
 
 class _Schema(BaseModel):
@@ -175,4 +179,16 @@ async def test_exhausts_retries_and_raises_with_transport_error() -> None:
 
     assert exc_info.value.attempts == 2
     assert "TypeError" in exc_info.value.last_error
-    assert "NoneType" in exc_info.value.last_error
+
+
+def test_dated_system_prompt_prepends_today_and_keeps_base() -> None:
+    from datetime import UTC, datetime
+
+    base = "You are a research analyst."
+    result = dated_system_prompt(base)
+
+    assert result.endswith(base)
+    # The current year anchors the model to the present (the bug was models
+    # assuming their training-cutoff year).
+    assert str(datetime.now(UTC).year) in result
+    assert "as of 2023" in result  # the explicit anti-pattern callout

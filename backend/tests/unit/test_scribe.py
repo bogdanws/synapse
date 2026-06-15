@@ -105,6 +105,84 @@ async def test_synthesize_returns_validated_report(
     assert report.sections[0].cited_source_ids == ["s1"]
 
 
+@pytest.mark.respx(base_url=OPENROUTER_BASE_URL)
+async def test_synthesize_repairs_orphan_citations_without_retry(
+    respx_mock: respx.MockRouter,
+) -> None:
+    """Regression: the production failure mode (bare `[^sX]`, no span) now self-heals.
+
+    The model emits a citation it forgot to wrap. Previously this exhausted the
+    retry budget and failed the job; the server-side repair pass wraps it, so a
+    single LLM call yields a valid report.
+    """
+    payload = _llm_payload(
+        sections=[
+            {
+                "id": "sec1",
+                "heading": "Background",
+                "body_md": "Romania's prime minister is Ilie Bolojan[^s1].",
+            }
+        ]
+    )
+    route = respx_mock.post("/chat/completions").mock(
+        return_value=httpx.Response(200, json=_openrouter_completion(payload))
+    )
+    agent = ScribeAgent(model="test/model")
+    report = await agent.synthesize(
+        job_id=uuid4(),
+        topic="Romania PM",
+        sub_questions=[],
+        sources=[_source("s1")],
+    )
+    assert route.call_count == 1  # repaired in place, no retry needed
+    body = report.sections[0].body_md
+    assert '<span data-claim="sec1.c1">' in body
+    assert "[^s1]" in body
+    assert report.sections[0].cited_source_ids == ["s1"]
+
+
+@pytest.mark.respx(base_url=OPENROUTER_BASE_URL)
+async def test_synthesize_strips_markup_from_summary(
+    respx_mock: respx.MockRouter,
+) -> None:
+    """The summary renders as plain text, so claim spans / citations are stripped."""
+    payload = json.dumps(
+        {
+            "title": "T",
+            "summary_md": (
+                '<span data-claim="summary.c1">Veștea was designated PM[^s1]</span>. '
+                "Parliament has not yet invested the government."
+            ),
+            "sections": [
+                {
+                    "id": "sec1",
+                    "heading": "Background",
+                    "body_md": '<span data-claim="sec1.c1">a[^s1]</span>',
+                }
+            ],
+            "contradictions": [],
+            "follow_ups": [],
+        }
+    )
+    respx_mock.post("/chat/completions").mock(
+        return_value=httpx.Response(200, json=_openrouter_completion(payload))
+    )
+    agent = ScribeAgent(model="test/model")
+    report = await agent.synthesize(
+        job_id=uuid4(),
+        topic="Romania PM",
+        sub_questions=[],
+        sources=[_source("s1")],
+    )
+    assert "<span" not in report.summary_md
+    assert "[^s1]" not in report.summary_md
+    assert report.summary_md == (
+        "Veștea was designated PM. Parliament has not yet invested the government."
+    )
+    # The section body keeps its claim markup — only the summary is stripped.
+    assert "data-claim" in report.sections[0].body_md
+
+
 # ---- agent: empty source list ----------------------------------------------
 
 

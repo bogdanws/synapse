@@ -6,6 +6,7 @@ OpenRouter is OpenAI-API-compatible, so we point `langchain-openai`'s `ChatOpenA
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any, cast
 
 from langchain_core.runnables import Runnable
@@ -30,6 +31,28 @@ def build_chat_model(model: str, *, temperature: float = 0.0) -> ChatOpenAI:
         base_url=OPENROUTER_BASE_URL,
         temperature=temperature,
     )
+
+
+def dated_system_prompt(prompt: str) -> str:
+    """Prepend today's date to a static agent system prompt.
+
+    Models anchor on their training cutoff and read relative time expressions —
+    "current", "latest", "now", "recent" — as of that cutoff. Concretely, Scout
+    was decomposing "the current Prime Minister of Romania" into "...as of
+    October 2023". Stating today's date re-anchors the model to the present.
+
+    Computed per call, not at import: the worker process is long-lived (days), so
+    an import-time timestamp would silently go stale. UTC keeps it deterministic
+    across deployments and matches the rest of the pipeline's timestamps.
+    """
+    today = datetime.now(UTC).strftime("%A, %d %B %Y")
+    preamble = (
+        f"Today's date is {today} (UTC). Treat this as the present: interpret "
+        '"current", "latest", "now", and "recent" relative to today, not to your '
+        "training cutoff, and never silently narrow a question to an earlier year "
+        '(e.g. do not rewrite "current" as "as of 2023").'
+    )
+    return f"{preamble}\n\n{prompt}"
 
 
 class StructuredRetryError(RuntimeError):

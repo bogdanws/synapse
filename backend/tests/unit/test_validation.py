@@ -21,6 +21,8 @@ from app.models.research import (
 from app.services.validation import (
     CriticValidationError,
     ScribeValidationError,
+    repair_orphan_citations,
+    strip_summary_markup,
     validate_critic_annotations,
     validate_scribe_report,
 )
@@ -479,3 +481,144 @@ def test_critic_rejects_missing_section_confidence() -> None:
     )
     with pytest.raises(CriticValidationError, match="missing section_confidence"):
         validate_critic_annotations(annotations, report)
+
+
+# ---- orphan-citation repair ------------------------------------------------
+
+
+def _repaired_report(body_md: str, *, sources: list[Source] | None = None) -> ScribeReport:
+    """Repair a single-section body and assemble it into a report.
+
+    Mirrors what `ScribeAgent._assemble` does: repair runs before the section is
+    constructed, so the section's derived `cited_source_ids` and the validator
+    both see the repaired prose.
+    """
+    repaired = repair_orphan_citations(body_md, "sec1")
+    return _report([_section("sec1", body_md=repaired)], sources=sources)
+
+
+def test_repair_wraps_section_of_only_orphan_citations() -> None:
+    """The exact production failure: prose with citations, no spans."""
+    body = "DeepSeek V4 Pro was released under an MIT license[^s1][^s2]."
+    report = _repaired_report(body)
+    section = report.sections[0]
+    assert "outside" not in section.body_md  # sanity: no leftover prose ref
+    # Both adjacent citations are pulled into one claim span.
+    assert '<span data-claim="sec1.c1">' in section.body_md
+    assert "[^s1][^s2]" in section.body_md
+    assert section.cited_source_ids == ["s1", "s2"]
+    validate_scribe_report(report)  # must not raise
+
+
+def test_repair_wraps_only_the_orphan_and_keeps_existing_spans() -> None:
+    body = (
+        'Wrapped <span data-claim="sec1.c1">claim[^s1]</span>. '
+        "But this fact is cited outside any span[^s2]."
+    )
+    report = _repaired_report(body)
+    section = report.sections[0]
+    # The pre-existing span survives and the orphan gains its own span; claims
+    # are renumbered sequentially in document order.
+    assert section.body_md.count("data-claim") == 2
+    assert '<span data-claim="sec1.c1">claim[^s1]</span>' in section.body_md
+    assert '<span data-claim="sec1.c2">' in section.body_md
+    assert "any span[^s2]" in section.body_md
+    validate_scribe_report(report)
+
+
+def test_repair_renumbers_when_inserting_before_existing_span() -> None:
+    """An orphan ahead of an existing claim forces a full, ordered renumber."""
+    body = 'Bare lead citation[^s1]. Then <span data-claim="sec1.c1">a wrapped claim[^s2]</span>.'
+    report = _repaired_report(body)
+    section = report.sections[0]
+    # Document order is orphan-first, so it becomes c1 and the old c1 becomes c2.
+    first = section.body_md.index('data-claim="sec1.c1"')
+    second = section.body_md.index('data-claim="sec1.c2"')
+    assert first < second
+    assert "lead citation[^s1]" in section.body_md[first:second]
+    validate_scribe_report(report)
+
+
+def test_repair_is_noop_without_orphans() -> None:
+    body = '<span data-claim="sec1.c1">a[^s1]</span>'
+    assert repair_orphan_citations(body, "sec1") == body
+
+
+def test_repair_is_idempotent() -> None:
+    body = "An unwrapped factual claim[^s1]."
+    once = repair_orphan_citations(body, "sec1")
+    twice = repair_orphan_citations(once, "sec1")
+    assert once == twice
+
+
+def test_repair_leaves_footnote_definitions_alone() -> None:
+    body = '<span data-claim="sec1.c1">claim[^s1]</span>\n\n[^s1]: A source.\n'
+    assert repair_orphan_citations(body, "sec1") == body
+
+
+def test_repair_skips_table_rows() -> None:
+    """A `|`-bearing line is likely a table; wrapping it could corrupt the cell."""
+    body = "| Model | Source |\n| --- | --- |\n| DeepSeek | cited[^s1] |"
+    # Nothing safe to wrap, so the body is returned unchanged and the validator
+    # still surfaces the orphan rather than the repair silently mangling a table.
+    assert repair_orphan_citations(body, "sec1") == body
+    with pytest.raises(ScribeValidationError, match="outside a <span data-claim> span"):
+        validate_scribe_report(_report([_section("sec1", body_md=body)]))
+
+
+def test_repair_skips_citations_inside_code() -> None:
+    body = "Use the token `[^s1]` literally in code."
+    assert repair_orphan_citations(body, "sec1") == body
+
+
+def test_repair_wraps_per_sentence_not_whole_paragraph() -> None:
+    body = "First sentence is plain. Second makes a claim[^s1]."
+    repaired = repair_orphan_citations(body, "sec1")
+    assert repaired.startswith("First sentence is plain. ")
+    assert '<span data-claim="sec1.c1">Second makes a claim[^s1]</span>' in repaired
+
+
+def test_repair_strips_leading_list_marker_from_claim() -> None:
+    body = "- A bulleted finding[^s1]"
+    repaired = repair_orphan_citations(body, "sec1")
+    # The bullet marker stays outside the span; only the claim text is wrapped.
+    assert repaired.startswith("- <span data-claim=")
+    validate_scribe_report(_report([_section("sec1", body_md=repaired)]))
+
+
+# ---- summary markup stripping ----------------------------------------------
+
+
+def test_strip_summary_removes_spans_and_citations() -> None:
+    """Regression: the model carried body claim markup into the plain-text summary."""
+    summary = (
+        "As of June 15, 2026, Romania is in a transitional phase. "
+        '<span data-claim="summary.c1">Adrian Veștea was designated PM on June 14, '
+        "2026[^s2]</span>, following a resignation. "
+        '<span data-claim="summary.c2">Veștea is vice-president of the PNL[^s2]</span>.'
+    )
+    result = strip_summary_markup(summary)
+    assert "<span" not in result
+    assert "</span>" not in result
+    assert "[^s2]" not in result
+    assert "data-claim" not in result
+    # Prose and punctuation survive cleanly.
+    assert result == (
+        "As of June 15, 2026, Romania is in a transitional phase. "
+        "Adrian Veștea was designated PM on June 14, 2026, following a resignation. "
+        "Veștea is vice-president of the PNL."
+    )
+
+
+def test_strip_summary_tidies_space_left_before_punctuation() -> None:
+    assert strip_summary_markup("The council met [^s2].") == "The council met."
+
+
+def test_strip_summary_preserves_plain_markdown() -> None:
+    summary = "Growth was **strong** and [steady](https://example.com)."
+    assert strip_summary_markup(summary) == summary
+
+
+def test_strip_summary_is_noop_on_clean_prose() -> None:
+    summary = "A concise, citation-free executive summary."
+    assert strip_summary_markup(summary) == summary

@@ -26,6 +26,7 @@ from app.models.research import (
 from app.services.llm import (
     StructuredRetryError,
     build_chat_model,
+    dated_system_prompt,
     invoke_structured_with_retry,
 )
 from app.services.validation import (
@@ -93,6 +94,8 @@ Worked example for a section `sec2` containing two claims (note `unsupported` ca
         }
       ]
     }
+
+Coverage must be exact. For that section — spans `sec2.c1` and `sec2.c2` — return those two `claim_flags`, no more, no fewer. WRONG: returning only `sec2.c1` (a flag is missing), or adding `sec2.c3` when no such span exists (an extra flag). Both are rejected.
 """
 
 
@@ -136,7 +139,7 @@ class CriticAgent:
             include_raw=True,
         )
         messages: list[Any] = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": dated_system_prompt(_SYSTEM_PROMPT)},
             {"role": "user", "content": _build_initial_prompt(topic, section, sources)},
         ]
 

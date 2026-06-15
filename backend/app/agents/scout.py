@@ -20,6 +20,7 @@ from app.services.credibility import combine_credibility, domain_prior
 from app.services.llm import (
     StructuredRetryError,
     build_chat_model,
+    dated_system_prompt,
     invoke_structured_with_retry,
 )
 from app.services.search import (
@@ -131,7 +132,7 @@ class ScoutAgent:
             include_raw=True,
         )
         messages: list[Any] = [
-            {"role": "system", "content": _DECOMPOSE_SYSTEM_PROMPT},
+            {"role": "system", "content": dated_system_prompt(_DECOMPOSE_SYSTEM_PROMPT)},
             {"role": "user", "content": f"Topic: {topic}"},
         ]
 

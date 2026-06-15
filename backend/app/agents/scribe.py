@@ -23,9 +23,15 @@ from app.models.research import (
 from app.services.llm import (
     StructuredRetryError,
     build_chat_model,
+    dated_system_prompt,
     invoke_structured_with_retry,
 )
-from app.services.validation import ScribeValidationError, validate_scribe_report
+from app.services.validation import (
+    ScribeValidationError,
+    repair_orphan_citations,
+    strip_summary_markup,
+    validate_scribe_report,
+)
 
 _log = structlog.get_logger(__name__)
 
@@ -41,7 +47,7 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
 
 {
   "title": "<short title>",
-  "summary_md": "<executive summary in GFM markdown, 2-4 sentences>",
+  "summary_md": "<executive summary, plain GFM prose, 2-4 sentences — no claim spans, no citations>",
   "sections": [
     {
       "id": "sec1",
@@ -64,6 +70,7 @@ Return strictly valid JSON matching this shape (no commentary, no markdown fence
 
 Field rules
 -----------
+- `summary_md`: plain prose only. It renders on its own, away from the sources, so it must contain **no** `<span data-claim>` wrappers and **no** `[^sX]` citations — those belong solely in section bodies. Save the evidence for the sections.
 - `id`: sequential `sec1`, `sec2`, `sec3`, ... with no gaps. Aim for 3-6 sections with descriptive headings.
 - `contradictions`: record only genuine factual disagreements. Each entry names the disputed `topic` and splits it into >= 2 **positions** — each a short `statement` of what one side claims plus the `source_ids` advancing it. A source may appear on **only one** position; never put the same id on two sides, and never invent ids. Use an **empty array** when sources do not conflict.
 
@@ -76,8 +83,14 @@ Body rules (mandatory — most failures come from skipping these)
    Be thorough: most substantive sections should contain at least one such claim. Prefer concrete, sourced statements over vague generalities, and wrap each one. A section with zero claims is only appropriate when it is genuinely non-factual (e.g. a short framing or transition).
 
 2. The `section_id` prefix MUST match the section's own `id`.
-3. Claim suffixes start at `c1` and increment by one within each section (`c1`, `c2`, `c3`, ...) — no gaps, no duplicates.
-4. Every citation `[^sX]` MUST appear inside one of these spans. Use the exact short id from the input source list; never invent a new id.
+3. Claim suffixes start at `c1` and increment by one within each section (`c1`, `c2`, `c3`, ...) — no gaps, no duplicates. (WRONG: `sec1.c1` then `sec1.c3`. RIGHT: `sec1.c1` then `sec1.c2`.)
+4. Every citation `[^sX]` MUST appear inside one of these spans — this is the single most common failure. A bare `[^sX]` sitting in ordinary prose is invalid; wrap the whole sentence that makes the claim. Use the exact short id from the input source list; never invent a new id.
+
+       WRONG (citation left outside any span):
+           The Hubble constant is roughly 70 km/s/Mpc[^s3].
+       RIGHT (the claiming sentence is wrapped):
+           <span data-claim="sec1.c1">The Hubble constant is roughly 70 km/s/Mpc[^s3]</span>.
+
 5. The span tag is the only HTML allowed in `body_md`. Tables, blockquotes, and lists use standard GFM.
 
 Worked example of one section's `body_md`:
@@ -91,6 +104,16 @@ Worked example of one `contradictions` entry (note the two sides are attributed 
       "positions": [
         { "statement": "The market grew 12% year over year.", "source_ids": ["s2"] },
         { "statement": "Growth was flat, under 2% year over year.", "source_ids": ["s4"] }
+      ]
+    }
+
+The same entry done WRONG — `s2` appears on both sides; one source cannot hold two contradicting positions, so this is rejected:
+
+    {
+      "topic": "Q4 market growth rate",
+      "positions": [
+        { "statement": "The market grew 12% year over year.", "source_ids": ["s2"] },
+        { "statement": "Growth was flat, under 2% year over year.", "source_ids": ["s2"] }
       ]
     }
 
@@ -146,7 +169,7 @@ class ScribeAgent:
             include_raw=True,
         )
         messages: list[Any] = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": dated_system_prompt(_SYSTEM_PROMPT)},
             {
                 "role": "user",
                 "content": _build_initial_prompt(topic, sub_questions, sources),
@@ -184,9 +207,18 @@ class ScribeAgent:
         sources: list[Source],
         llm_output: _ScribeLLMOutput,
     ) -> ScribeReport:
-        # `cited_source_ids` is filled in by `ReportSection`'s model_validator from `body_md`; we just hand over the three fields the model produced.
+        # Repair orphan citations before anything else reads the body: a bare
+        # `[^sX]` the model forgot to wrap is the dominant Scribe failure and is
+        # mechanically fixable, so we wrap it here rather than fail the job. The
+        # pass is a no-op when there is nothing to repair, so it never masks an
+        # unrelated validation error. `cited_source_ids` is then derived from the
+        # repaired `body_md` by `ReportSection`'s model_validator.
         sections = [
-            ReportSection(id=s.id, heading=s.heading, body_md=s.body_md)
+            ReportSection(
+                id=s.id,
+                heading=s.heading,
+                body_md=repair_orphan_citations(s.body_md, s.id),
+            )
             for s in llm_output.sections
         ]
         return ScribeReport(
@@ -194,7 +226,9 @@ class ScribeAgent:
             job_id=job_id,
             topic=topic,
             title=llm_output.title,
-            summary_md=llm_output.summary_md,
+            # The summary renders as plain prose; strip any claim spans or
+            # citations the model carried over from the body convention.
+            summary_md=strip_summary_markup(llm_output.summary_md),
             sections=sections,
             sources=sources,
             contradictions=llm_output.contradictions,
@@ -227,9 +261,20 @@ def _retry_feedback_message(error: str) -> str:
 
     Phrased as an edit on the prior response (rather than "try again from scratch") because the prior response is now visible in the conversation history.
     """
+    hint = ""
+    if "outside a <span data-claim>" in error:
+        # The server already repairs most orphan citations; if one still reaches
+        # the model, spell out the mechanical fix so a weaker model can apply it.
+        hint = (
+            "\n\nFor each [^sX] listed above: find the sentence containing it and "
+            'wrap that sentence in <span data-claim="secN.cM">…</span>, keeping the '
+            "claim numbering sequential within the section. Every [^sX] in the body "
+            "must end up inside exactly one claim span."
+        )
     return (
         "Your previous response failed validation with this error:\n"
         f"{error}\n\n"
         "Reply with a fully corrected report in the same JSON shape. "
         "Preserve the parts that were correct; change only what the error references."
+        f"{hint}"
     )
