@@ -82,5 +82,87 @@
         "snippet": "Llama 2 models, trained on 2 trillion tokens, match or exceed GPT-3.5 on many academic benchmarks. The 13B Llama 2 model achieves performance competitive with 175B GPT-3 on several reasoning tasks."
       }
     ]
+  },
+  {
+    "id": "crispr_sickle_cell",
+    "topic": "FDA approval of CRISPR gene therapy Casgevy for sickle cell disease, December 2023",
+    "sub_questions": [
+      "What did the FDA approve for sickle cell disease in December 2023?",
+      "What makes Casgevy's mechanism novel and who is eligible to receive it?",
+      "What is the cost and commercial context of the new gene therapies?"
+    ],
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://www.fda.gov/news-events/press-announcements/fda-approves-first-gene-therapies-treat-patients-sickle-cell-disease",
+        "title": "FDA Approves First Gene Therapies to Treat Patients with Sickle Cell Disease (FDA, 2023)",
+        "author": null,
+        "published_at": "2023-12-08T00:00:00+00:00",
+        "credibility": 0.97,
+        "relevance": 0.95,
+        "snippet": "On December 8, 2023, the U.S. FDA approved two milestone treatments, Casgevy and Lyfgenia, the first cell-based gene therapies for sickle cell disease in patients 12 years of age and older. Casgevy is the first FDA-approved treatment to use CRISPR/Cas9 genome editing. Sickle cell disease is an inherited blood disorder affecting approximately 100,000 people in the U.S., most commonly African Americans."
+      },
+      {
+        "id": "s2",
+        "url": "https://ir.crisprtx.com/news-releases/news-release-details/vertex-and-crispr-therapeutics-announce-us-fda-approval",
+        "title": "Vertex and CRISPR Therapeutics Announce US FDA Approval of CASGEVY (CRISPR Therapeutics, 2023)",
+        "author": null,
+        "published_at": "2023-12-08T00:00:00+00:00",
+        "credibility": 0.65,
+        "relevance": 0.9,
+        "snippet": "Casgevy (exagamglogene autotemcel) was co-developed by Vertex Pharmaceuticals and CRISPR Therapeutics. Approximately 16,000 patients 12 years of age and older with severe sickle cell disease may be eligible for this one-time treatment."
+      },
+      {
+        "id": "s3",
+        "url": "https://www.cnbc.com/2023/12/08/casgevy-first-crispr-gene-editing-treatment-approved-in-us.html",
+        "title": "Casgevy: First CRISPR gene-editing treatment approved in U.S. (CNBC, 2023)",
+        "author": null,
+        "published_at": "2023-12-08T00:00:00+00:00",
+        "credibility": 0.75,
+        "relevance": 0.85,
+        "snippet": "Casgevy, co-developed by Vertex Pharmaceuticals and CRISPR Therapeutics, will cost $2.2 million per patient. CRISPR, the gene-editing technology, won its inventors the Nobel Prize in Chemistry in 2020."
+      }
+    ]
+  },
+  {
+    "id": "glp1_select",
+    "topic": "Semaglutide cardiovascular outcomes in the SELECT trial for obesity without diabetes",
+    "sub_questions": [
+      "How was the SELECT cardiovascular outcomes trial designed?",
+      "What were the primary cardiovascular results for semaglutide 2.4 mg?",
+      "What population did the trial enroll and who sponsored it?"
+    ],
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa2307563",
+        "title": "Semaglutide and Cardiovascular Outcomes in Obesity without Diabetes (NEJM)",
+        "author": null,
+        "published_at": "2023-11-11T00:00:00+00:00",
+        "credibility": 0.95,
+        "relevance": 0.95,
+        "snippet": "The SELECT trial was a multicenter, double-blind, randomized, placebo-controlled, event-driven superiority trial. It enrolled patients 45 years of age or older who had preexisting cardiovascular disease and a body-mass index of 27 or greater but no history of diabetes. Patients were randomly assigned in a 1:1 ratio to once-weekly subcutaneous semaglutide 2.4 mg or placebo."
+      },
+      {
+        "id": "s2",
+        "url": "https://clinicaltrials.gov/study/NCT03574597",
+        "title": "SELECT trial registry entry NCT03574597 (ClinicalTrials.gov)",
+        "author": null,
+        "published_at": null,
+        "credibility": 0.9,
+        "relevance": 0.9,
+        "snippet": "Trial NCT03574597 was a Phase 3 interventional study with 17,604 participants, sponsored by Novo Nordisk. It started on October 24, 2018 and was completed on June 29, 2023."
+      },
+      {
+        "id": "s3",
+        "url": "https://www.globenewswire.com/news-release/2023/11/11/2778596/0/en/Novo-Nordisk-A-S-Semaglutide-cardiovascular-outcomes.html",
+        "title": "Novo Nordisk: Semaglutide 2.4 mg cardiovascular outcomes data (GlobeNewswire, 2023)",
+        "author": null,
+        "published_at": "2023-11-11T00:00:00+00:00",
+        "credibility": 0.55,
+        "relevance": 0.85,
+        "snippet": "Semaglutide 2.4 mg delivered a statistically significant 20% risk reduction in major adverse cardiovascular events (MACE), with reductions demonstrated consistently across age, gender, ethnicity and starting BMI. Risk reductions in MACE were evident soon after initiation."
+      }
+    ]
   }
 ]

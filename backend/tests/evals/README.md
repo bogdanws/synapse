@@ -39,9 +39,23 @@ test. `gpt-5.1` (default) is a strong reasoner at moderate cost. Never use
 the same model as both judge and candidate — the harness warns when it detects
 this to guard against self-preference bias.
 
-**Cost:** defaults are one cheap model × 2 cases. A full default run is a
-handful of API calls. Cost scales with `(#candidate models) × (#cases)`;
+**Cost:** defaults are one cheap model × 4 cases per agent. A full default run
+is a few dozen API calls. Cost scales with `(#candidate models) × (#cases)`;
 multiply by ~3 judge calls per Scribe case and ~1 per Critic case.
+
+## Fixture coverage
+
+Cases span four domains so a single model can be compared across topic types:
+energy (grid storage), ML (LLM scaling/efficiency), genetics (CRISPR/Casgevy),
+and pharma (semaglutide/SELECT). Snippets are grounded in real source text
+pulled from Exa so the facts are checkable.
+
+Critic cases embed *subtle* labeled falsehoods — number swaps (e.g. age 12 → 18),
+entity swaps (e.g. Nobel Chemistry → Physiology/Medicine), and fabricated or
+over-generalized stats — rather than blatant contradictions. These discriminate
+precision/recall far better: a weak model tends to hedge with
+`partially_supported` (counted as not-flagged, surfaced in `detail`) instead of
+committing to `unsupported`/`contradicted`.
 
 ## Fixture formats
 
