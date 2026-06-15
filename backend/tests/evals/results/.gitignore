@@ -1,0 +1,3 @@
+# Ignore generated eval run artifacts; keep this file and the directory in git.
+*.json
+*.md

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "grid_storage",
+    "topic": "Grid-scale battery storage costs and deployment, 2020-2024",
+    "sub_questions": [
+      "What has been the trend in grid-scale battery storage costs from 2020 to 2024?",
+      "How much new battery storage capacity was deployed globally each year from 2020 to 2024?",
+      "What policy mechanisms have driven grid-scale battery storage deployment?",
+      "Which regions lead in grid-scale battery storage deployment capacity?"
+    ],
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://www.iea.org/reports/batteries-and-secure-energy-transitions",
+        "title": "Batteries and Secure Energy Transitions (IEA, 2024)",
+        "author": null,
+        "published_at": null,
+        "credibility": 0.9,
+        "relevance": 0.95,
+        "snippet": "Global battery storage capacity additions reached 130 GW in 2023, a record annual addition. The cost of utility-scale lithium-ion batteries fell below $150/kWh in 2023, representing a 90% decline from 2013 levels."
+      },
+      {
+        "id": "s2",
+        "url": "https://www.woodmac.com/news/editorial/global-energy-storage-outlook/",
+        "title": "Global Energy Storage Outlook (Wood Mackenzie, 2024)",
+        "author": null,
+        "published_at": null,
+        "credibility": 0.8,
+        "relevance": 0.9,
+        "snippet": "China accounted for over 60% of global battery storage deployments in 2023. The US Inflation Reduction Act provided significant tax incentives that accelerated domestic battery manufacturing and deployment."
+      },
+      {
+        "id": "s3",
+        "url": "https://www.lazard.com/research-insights/2024-levelized-cost-of-energy-plus/",
+        "title": "Lazard Levelized Cost of Energy Plus (2024)",
+        "author": null,
+        "published_at": null,
+        "credibility": 0.85,
+        "relevance": 0.85,
+        "snippet": "The levelized cost of storage (LCOS) for utility-scale lithium-ion four-hour systems fell to $60-120 per MWh in 2024. Wind and solar paired with storage are now cost-competitive with new gas peaker plants in most markets."
+      }
+    ]
+  },
+  {
+    "id": "llm_efficiency",
+    "topic": "Large language model compute efficiency trends, 2022-2024",
+    "sub_questions": [
+      "How have training compute requirements for state-of-the-art LLMs changed from 2022 to 2024?",
+      "What techniques have most improved inference efficiency for large language models?",
+      "How has quantization affected the cost of deploying large language models?",
+      "What is the relationship between model size and performance per unit of compute?"
+    ],
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://arxiv.org/abs/2203.15556",
+        "title": "Training Compute-Optimal Large Language Models (Hoffmann et al., 2022)",
+        "author": "Jordan Hoffmann et al.",
+        "published_at": "2022-03-29T00:00:00+00:00",
+        "credibility": 0.95,
+        "relevance": 0.9,
+        "snippet": "Current large language models are significantly undertrained relative to what is compute-optimal. For a given compute budget, training a smaller model for more steps is more efficient. The Chinchilla 70B model outperforms GPT-3 175B using the same training compute."
+      },
+      {
+        "id": "s2",
+        "url": "https://arxiv.org/abs/2208.07339",
+        "title": "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale (Dettmers et al., 2022)",
+        "author": "Tim Dettmers et al.",
+        "published_at": "2022-08-15T00:00:00+00:00",
+        "credibility": 0.9,
+        "relevance": 0.85,
+        "snippet": "8-bit quantization reduces LLM memory requirements by roughly 50% with less than 1% degradation in perplexity for models up to 175B parameters. This enables running 175B parameter models on consumer-grade GPU hardware."
+      },
+      {
+        "id": "s3",
+        "url": "https://arxiv.org/abs/2307.09288",
+        "title": "Llama 2: Open Foundation and Fine-Tuned Chat Models (Touvron et al., 2023)",
+        "author": "Hugo Touvron et al.",
+        "published_at": "2023-07-18T00:00:00+00:00",
+        "credibility": 0.9,
+        "relevance": 0.8,
+        "snippet": "Llama 2 models, trained on 2 trillion tokens, match or exceed GPT-3.5 on many academic benchmarks. The 13B Llama 2 model achieves performance competitive with 175B GPT-3 on several reasoning tasks."
+      }
+    ]
+  }
+]

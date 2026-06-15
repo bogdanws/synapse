@@ -1,0 +1,91 @@
+[
+  {
+    "id": "battery_market",
+    "topic": "Grid-scale battery storage market, 2023",
+    "title": "Battery Storage Market Growth in 2023",
+    "summary_md": "The grid-scale battery storage market set records in 2023, driven by falling costs and supportive policy.",
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://www.iea.org/reports/batteries-and-secure-energy-transitions",
+        "title": "Batteries and Secure Energy Transitions (IEA, 2024)",
+        "credibility": 0.9,
+        "relevance": 0.95,
+        "snippet": "Global battery storage capacity additions reached 130 GW in 2023, a record annual addition. The cost of utility-scale lithium-ion batteries fell below $150 per kWh in 2023, down 90% from 2013 levels."
+      },
+      {
+        "id": "s2",
+        "url": "https://www.woodmac.com/news/editorial/global-energy-storage-outlook/",
+        "title": "Global Energy Storage Outlook (Wood Mackenzie, 2024)",
+        "credibility": 0.8,
+        "relevance": 0.9,
+        "snippet": "Renewable energy policy mandates were the primary driver of new battery storage procurement in 2023. China accounted for over 60% of global deployments."
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec1",
+        "heading": "Deployment Records",
+        "body_md": "The battery storage sector broke records in 2023. <span data-claim=\"sec1.c1\">Global capacity additions reached 130 GW in 2023, the highest ever recorded.[^s1]</span> Cost reductions continued apace, with <span data-claim=\"sec1.c2\">utility-scale lithium-ion battery prices falling below $150 per kWh in 2023, a 90% decline from 2013 levels.[^s1]</span>"
+      },
+      {
+        "id": "sec2",
+        "heading": "Market Drivers",
+        "body_md": "Policy and economics both accelerated deployment. <span data-claim=\"sec2.c1\">Renewable energy policy mandates were the primary driver of new battery storage procurement in 2023.[^s2]</span> On a regional basis, <span data-claim=\"sec2.c2\">the United States led global battery storage deployments in 2023, accounting for over 60% of new capacity.[^s2]</span>"
+      }
+    ],
+    "labels": {
+      "sec1.c1": "supported",
+      "sec1.c2": "supported",
+      "sec2.c1": "supported",
+      "sec2.c2": "false"
+    },
+    "contradictions": [],
+    "follow_ups": []
+  },
+  {
+    "id": "llm_scaling_laws",
+    "topic": "LLM scaling laws and compute-optimal training, 2022",
+    "title": "Chinchilla and the Compute-Optimal Frontier",
+    "summary_md": "The Chinchilla paper overturned prior assumptions about large language model training, showing that data quantity matters as much as model size.",
+    "sources": [
+      {
+        "id": "s1",
+        "url": "https://arxiv.org/abs/2203.15556",
+        "title": "Training Compute-Optimal Large Language Models (Hoffmann et al., 2022)",
+        "credibility": 0.95,
+        "relevance": 0.95,
+        "snippet": "For compute-optimal training, the number of training tokens should scale in proportion to model parameters. A 70B parameter model should be trained on roughly 1.4 trillion tokens. The Chinchilla 70B model outperforms Gopher 280B using the same training compute budget."
+      },
+      {
+        "id": "s2",
+        "url": "https://arxiv.org/abs/2001.08361",
+        "title": "Scaling Laws for Neural Language Models (Kaplan et al., 2020)",
+        "credibility": 0.95,
+        "relevance": 0.9,
+        "snippet": "Model performance scales as a power law with model size, dataset size, and compute. Larger models are more sample-efficient than smaller models trained for longer on the same compute budget."
+      }
+    ],
+    "sections": [
+      {
+        "id": "sec1",
+        "heading": "Chinchilla Scaling Laws",
+        "body_md": "Hoffmann et al. (2022) established revised scaling principles. <span data-claim=\"sec1.c1\">They found that compute-optimal training requires scaling training tokens proportionally to model parameters.[^s1]</span> Concretely, <span data-claim=\"sec1.c2\">a 70B parameter model requires roughly 1.4 trillion training tokens for compute-optimal performance.[^s1]</span> The result was striking: <span data-claim=\"sec1.c3\">Chinchilla 70B outperforms Gopher 280B despite using the same training compute.[^s1]</span>"
+      },
+      {
+        "id": "sec2",
+        "heading": "Prior Scaling Research",
+        "body_md": "Kaplan et al. (2020) laid the groundwork with earlier scaling laws. <span data-claim=\"sec2.c1\">They showed that model performance scales as a power law with model size, dataset size, and compute.[^s2]</span> Their key finding was that <span data-claim=\"sec2.c2\">smaller models trained on more data are always more sample-efficient than larger models trained on less data for the same compute budget.[^s2]</span>"
+      }
+    ],
+    "labels": {
+      "sec1.c1": "supported",
+      "sec1.c2": "supported",
+      "sec1.c3": "supported",
+      "sec2.c1": "supported",
+      "sec2.c2": "false"
+    },
+    "contradictions": [],
+    "follow_ups": []
+  }
+]

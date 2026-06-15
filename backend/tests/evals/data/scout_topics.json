@@ -1,0 +1,56 @@
+[
+  {
+    "id": "grid_storage",
+    "topic": "Grid-scale battery storage costs and deployment, 2020-2024",
+    "curated_sources": [
+      {
+        "url": "https://www.iea.org/reports/batteries-and-secure-energy-transitions",
+        "title": "Batteries and Secure Energy Transitions (IEA, 2024)",
+        "tier": "high"
+      },
+      {
+        "url": "https://www.nrel.gov/docs/fy24osti/87819.pdf",
+        "title": "2023 Grid Energy Storage Technology Cost and Performance Assessment (NREL, 2024)",
+        "tier": "high"
+      },
+      {
+        "url": "https://www.lazard.com/research-insights/2024-levelized-cost-of-energy-plus/",
+        "title": "Lazard Levelized Cost of Energy Plus 2024",
+        "tier": "high"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Battery_storage_power_station",
+        "title": "Battery storage power station (Wikipedia)",
+        "tier": "medium"
+      }
+    ],
+    "notes": "curated 2025-01; IEA and NREL are the primary authoritative public sources for this topic"
+  },
+  {
+    "id": "llm_scaling",
+    "topic": "Large language model scaling laws and compute efficiency, 2022-2024",
+    "curated_sources": [
+      {
+        "url": "https://arxiv.org/abs/2203.15556",
+        "title": "Training Compute-Optimal Large Language Models (Hoffmann et al., 2022)",
+        "tier": "high"
+      },
+      {
+        "url": "https://arxiv.org/abs/2001.08361",
+        "title": "Scaling Laws for Neural Language Models (Kaplan et al., 2020)",
+        "tier": "high"
+      },
+      {
+        "url": "https://openai.com/research/gpt-4",
+        "title": "GPT-4 Technical Report (OpenAI, 2023)",
+        "tier": "high"
+      },
+      {
+        "url": "https://en.wikipedia.org/wiki/Large_language_model",
+        "title": "Large language model (Wikipedia)",
+        "tier": "medium"
+      }
+    ],
+    "notes": "curated 2025-01; arXiv papers are the primary references for scaling law research"
+  }
+]
