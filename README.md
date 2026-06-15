@@ -11,6 +11,24 @@ AI-powered research and synthesis platform. Three collaborative agents — **Sco
 - **Search:** Exa API (+ trafilatura for fallback article extraction).
 - **Storage:** PostgreSQL 18 (reports, users) + Redis 8 (cache, queue, pubsub).
 
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full set of Mermaid diagrams: component
+architecture, the Scout → Scribe → Critic pipeline sequence (with event types), the LangGraph data
+flow, and the database ERD.
+
+```mermaid
+flowchart LR
+    FE["React frontend"] -->|"REST"| API["FastAPI"]
+    FE <-->|"live events"| API
+    API -->|"enqueue"| REDIS[("Redis")]
+    REDIS --> W["taskiq worker"]
+    W --> AG["Scout → Scribe → Critic<br/>(LangGraph)"]
+    AG --> OR["OpenRouter"]
+    AG --> EXA["Exa search"]
+    AG --> PG[("PostgreSQL")]
+```
+
 ## Repository layout
 
 ```
@@ -60,6 +78,7 @@ synapse/
 │   ├── .dockerignore
 │   └── Dockerfile
 ├── docs/
+│   ├── ARCHITECTURE.md             # Mermaid diagrams (components, pipeline, data flow, ERD)
 │   └── USER_STORIES.md
 ├── .github/
 │   ├── CODEOWNERS
