@@ -2,6 +2,9 @@
 
 AI-powered research and synthesis platform. Three collaborative agents — **Scout** (research), **Scribe** (synthesis), **Critic** (fact-checking) — turn a topic into a verified, cited report.
 
+Demo video:
+[![Synapse Demo](https://img.youtube.com/vi/bj9hactZ_us/maxresdefault.jpg)](https://youtu.be/bj9hactZ_us)
+
 ## Stack
 
 - **Frontend:** React 19 + TypeScript + Tailwind 4 + Vite, with TanStack Router + Query, react-markdown, react-hook-form + zod, lucide-react.
