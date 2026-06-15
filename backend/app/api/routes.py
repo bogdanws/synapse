@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.scout import ScoutAgent, ScoutValidationError
@@ -18,6 +18,7 @@ from app.models import orm
 from app.models.research import (
     FollowUpRequest,
     JobLineage,
+    JobListResponse,
     JobStatus,
     PreviewResponse,
     ResearchJob,
@@ -86,6 +87,22 @@ async def start_research(
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
+
+
+@router.get(
+    "/research",
+    response_model=JobListResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["research"],
+)
+async def list_research(
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+) -> JobListResponse:
+    """Paginated list of the caller's research jobs, newest first."""
+    return await JobRepository(session).list_jobs(user.id, limit=limit, offset=offset)
 
 
 @router.post(
@@ -226,6 +243,31 @@ async def get_report(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Report not yet available — job may still be running.",
         ) from exc
+
+
+@router.delete(
+    "/research/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["research"],
+)
+async def delete_research(
+    job_id: UUID,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """Delete one of the caller's research jobs and everything derived from it.
+
+    Follow-up children are not deleted — the parent/child link is dropped and they
+    remain as standalone research jobs.
+    """
+    repo = JobRepository(session)
+    try:
+        # Scope to the owner so other tenants' jobs surface as 404, not a silent delete.
+        await repo.delete_job(job_id, user_id=user.id)
+    except JobNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found.") from exc
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

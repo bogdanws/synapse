@@ -9,7 +9,6 @@ import { Button } from '../components/ui/Button'
 import { Select, type SelectOption } from '../components/ui/Select'
 import { AGENTS, AGENT_ORDER, type Agent } from '../components/ui/Agent'
 import { AgentDot } from '../components/ui/AgentDot'
-import { ConfidenceBar } from '../components/ConfidenceBar'
 import { useMe } from '../hooks/useMe'
 import { useAgentModels } from '../hooks/useAgentModels'
 import { usePreviewResearch } from '../hooks/usePreviewResearch'
@@ -17,8 +16,27 @@ import { useResearchHistory } from '../hooks/useResearchHistory'
 import { useStartResearch } from '../hooks/useStartResearch'
 import { ApiError } from '../services/api'
 import { ALLOWED_MODELS } from '../constants/models'
+import type { JobStatus, JobSummary } from '../types/api'
 
 const allowedModelIds: string[] = ALLOWED_MODELS.map((m) => m.id)
+
+// How many briefs the "recent" rail shows before deferring to the full Library.
+const RECENT_LIMIT = 6
+
+// Each status maps to the agent whose colour represents that stage, plus whether
+// the job is still running (terminal states get a static dot, live ones pulse).
+const RECENT_STATUS: Record<JobStatus, { agent: Agent; label: string; active: boolean }> = {
+  completed: { agent: 'scout', label: 'completed', active: false },
+  failed: { agent: 'critic', label: 'failed', active: false },
+  pending: { agent: 'scribe', label: 'pending', active: true },
+  scouting: { agent: 'scribe', label: 'scouting', active: true },
+  synthesizing: { agent: 'scribe', label: 'synthesizing', active: true },
+  critiquing: { agent: 'scribe', label: 'critiquing', active: true },
+}
+
+function formatRecentDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
 
 const formSchema = z.object({
   topic: z.string().min(10, 'Topic must be at least 10 characters').max(2000),
@@ -37,12 +55,41 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-const EXAMPLE_QUESTIONS = [
-  "What's the current state of evidence on GLP-1 agonists and cardiovascular outcomes in non-diabetic patients?",
-  'How did the EU AI Act risk tiers evolve between the 2021 draft and final passage, and who pushed which changes?',
-  "Who controls the world's lithium refining capacity, and how has that concentration shifted since 2020?",
-  'Heat pump adoption: what is working in the Nordics that is not translating to the UK, and why?',
-]
+// How many recommended follow-ups the "start from a recent question" grid shows.
+const RECENT_QUESTION_LIMIT = 4
+
+/** One follow-up per completed report per pass (newest report first), then a second
+ *  from each, until `limit` or suggestions are exhausted. Skips duplicate strings. */
+function pickRoundRobinFollowUps(
+  jobs: Pick<JobSummary, 'status' | 'follow_ups'>[],
+  limit: number,
+): string[] {
+  const lists = jobs
+    .filter((job) => job.status === 'completed')
+    .map((job) => job.follow_ups ?? [])
+    .filter((followUps) => followUps.length > 0)
+
+  const picked: string[] = []
+  const seen = new Set<string>()
+  let round = 0
+
+  while (picked.length < limit) {
+    let addedThisRound = false
+    for (const followUps of lists) {
+      if (round >= followUps.length) continue
+      const question = followUps[round]
+      if (seen.has(question)) continue
+      seen.add(question)
+      picked.push(question)
+      addedThisRound = true
+      if (picked.length >= limit) break
+    }
+    if (!addedThisRound) break
+    round += 1
+  }
+
+  return picked
+}
 
 const DEPTH_OPTIONS: ReadonlyArray<SelectOption<FormData['depth']>> = [
   { value: 'shallow', label: 'Shallow', description: 'Quick scan' },
@@ -79,6 +126,10 @@ export default function ResearchInputPage() {
   const me = useMe()
   const { models, setModel, persist } = useAgentModels()
   const history = useResearchHistory()
+  // The history hook is paginated (useInfiniteQuery); the "recent" sidebar only needs a flat list.
+  const historyItems = history.data?.pages.flatMap((p) => p.items) ?? []
+  const recentItems = historyItems.slice(0, RECENT_LIMIT)
+  const recentQuestions = pickRoundRobinFollowUps(historyItems, RECENT_QUESTION_LIMIT)
   const startResearch = useStartResearch()
   const previewResearch = usePreviewResearch()
 
@@ -170,7 +221,7 @@ export default function ResearchInputPage() {
     [previewResearch, navigate],
   )
 
-  const briefCount = history.data?.length ?? 0
+  const briefCount = historyItems.length
 
   const submitError = startResearch.error
   const showErrorInline =
@@ -382,49 +433,56 @@ export default function ResearchInputPage() {
             )}
           </div>
 
-          {/* Recent / example questions */}
-          <div className="mt-10 sm:mt-12">
-            <div className="micro" style={{ marginBottom: '0.875rem' }}>
-              Or start from a recent question
-            </div>
-            {/* TODO: replace static examples with follow-ups from history. */}
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2"
-              style={{ borderTop: '1px solid var(--line-soft)' }}
-            >
-              {EXAMPLE_QUESTIONS.map((q, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleExampleClick(q)}
-                  className={`flex items-start gap-3.5 text-left transition-colors hover:bg-bg-2 py-5 pr-5 ${
-                    i % 2 === 0 ? 'sm:border-r' : 'sm:pl-6'
-                  }`}
-                  style={{
-                    borderBottom: '1px solid var(--line-soft)',
-                    borderRightColor: 'var(--line-soft)',
-                  }}
-                >
-                  <span
-                    className="font-mono"
+          {/* Recommended follow-ups from completed briefs. Hidden until at least
+           * one finished report has suggestions, so a new account never sees an
+           * empty grid. */}
+          {recentQuestions.length > 0 && (
+            <div className="mt-10 sm:mt-12">
+              <div className="micro" style={{ marginBottom: '0.875rem' }}>
+                Or start from a recent question
+              </div>
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2"
+                style={{ borderTop: '1px solid var(--line-soft)' }}
+              >
+                {recentQuestions.map((q, i) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleExampleClick(q)}
+                    className={`flex items-start gap-3.5 text-left transition-colors hover:bg-bg-2 py-5 pr-5 ${
+                      i % 2 === 0
+                        ? i + 1 < recentQuestions.length
+                          ? 'sm:border-r'
+                          : ''
+                        : 'sm:pl-6'
+                    }`}
                     style={{
-                      fontSize: '0.6875rem',
-                      color: 'var(--muted)',
-                      paddingTop: '0.1875rem',
+                      borderBottom: '1px solid var(--line-soft)',
+                      borderRightColor: 'var(--line-soft)',
                     }}
                   >
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span
-                    className="serif"
-                    style={{ fontSize: '1rem', lineHeight: 1.4, color: 'var(--fg-2)' }}
-                  >
-                    {q}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: '0.6875rem',
+                        color: 'var(--muted)',
+                        paddingTop: '0.1875rem',
+                      }}
+                    >
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span
+                      className="serif"
+                      style={{ fontSize: '1rem', lineHeight: 1.4, color: 'var(--fg-2)' }}
+                    >
+                      {q}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </main>
 
         {/* Library sidebar — stacks below the composition column on small screens
@@ -450,51 +508,10 @@ export default function ResearchInputPage() {
             </Link>
           </div>
 
-          {history.data && history.data.length > 0 ? (
+          {recentItems.length > 0 ? (
             <div className="flex flex-col">
-              {history.data.map((job, i) => (
-                <Link
-                  key={job.id}
-                  to="/research/$jobId"
-                  params={{ jobId: job.id }}
-                  className="block transition-colors hover:bg-bg-3"
-                  style={{
-                    padding: '0.875rem 0',
-                    borderBottom:
-                      i < (history.data?.length ?? 0) - 1 ? '1px solid var(--line-soft)' : 'none',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                  }}
-                >
-                  <div
-                    className="serif"
-                    style={{
-                      fontSize: '0.875rem',
-                      lineHeight: 1.3,
-                      marginBottom: '0.5rem',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {job.topic}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <ConfidenceBar value={job.progress ?? 0} />
-                    <span
-                      className="font-mono"
-                      style={{ fontSize: '0.625rem', color: 'var(--muted)' }}
-                    >
-                      {job.created_at
-                        ? new Date(job.created_at).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                          })
-                        : ''}
-                    </span>
-                  </div>
-                </Link>
+              {recentItems.map((job, i) => (
+                <RecentRow key={job.id} job={job} divider={i < recentItems.length - 1} />
               ))}
             </div>
           ) : (
@@ -518,5 +535,69 @@ export default function ResearchInputPage() {
         </aside>
       </div>
     </div>
+  )
+}
+
+// A single brief in the "recent" rail.
+function RecentRow({ job, divider }: { job: JobSummary; divider: boolean }) {
+  const status = RECENT_STATUS[job.status]
+  const done = job.status === 'completed'
+
+  return (
+    <Link
+      to={done ? '/research/$jobId/report' : '/research/$jobId'}
+      params={{ jobId: job.id }}
+      className="group block transition-colors hover:bg-bg-3"
+      style={{
+        padding: '0.875rem 0',
+        borderBottom: divider ? '1px solid var(--line-soft)' : 'none',
+        textDecoration: 'none',
+        color: 'inherit',
+        opacity: job.status === 'failed' ? 0.65 : 1,
+      }}
+    >
+      <div
+        className="serif"
+        style={{
+          fontSize: '0.875rem',
+          lineHeight: 1.35,
+          fontWeight: 300,
+          marginBottom: '0.5rem',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {job.topic}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="flex items-center gap-1.5 min-w-0"
+          style={{ color: `var(--${status.agent})` }}
+        >
+          <span
+            className={status.active ? 'pulse-dot' : ''}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'currentColor',
+              flexShrink: 0,
+            }}
+            aria-hidden
+          />
+          <span className="label" style={{ fontSize: '0.625rem', color: 'inherit' }}>
+            {status.label}
+          </span>
+        </span>
+        <span
+          className="font-mono shrink-0"
+          style={{ fontSize: '0.625rem', color: 'var(--muted)' }}
+        >
+          {formatRecentDate(job.created_at)}
+        </span>
+      </div>
+    </Link>
   )
 }

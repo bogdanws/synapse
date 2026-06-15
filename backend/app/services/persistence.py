@@ -15,7 +15,7 @@ from uuid import UUID
 import structlog
 from sqlalchemy import Integer, cast, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.models import orm
 from app.models.research import (
@@ -24,7 +24,9 @@ from app.models.research import (
     CriticAnnotations,
     FollowUpLink,
     JobLineage,
+    JobListResponse,
     JobStatus,
+    JobSummary,
     ReportSection,
     ScribeReport,
     SectionConfidence,
@@ -110,6 +112,68 @@ class JobRepository:
             report=report,
             annotations=annotations,
         )
+
+    async def list_jobs(self, user_id: UUID, *, limit: int, offset: int) -> JobListResponse:
+        """Return the user's jobs newest-first, with derived source count, confidence, and parent edge.
+
+        `source_count` is a correlated COUNT (0 when Scout hasn't written sources yet);
+        `overall_confidence` comes from the Critic annotations and is NULL until the job completes;
+        `parent_job_id`/`parent_topic` come from the at-most-one `FollowUp` child edge so the UI can
+        badge follow-up jobs and link back to the parent. `follow_ups` is extracted from the report
+        body's `follow_ups` array *in SQL* (`body['follow_ups']`) rather than selecting the whole
+        JSONB document, so this hot, paginated query never detoasts/transfers/parses the full report.
+        Ordering carries a secondary `id` key so offset paging stays stable when `created_at` ties.
+        """
+        parent = aliased(orm.ResearchJob)
+        source_count = (
+            select(func.count())
+            .select_from(orm.Source)
+            .where(orm.Source.job_id == orm.ResearchJob.id)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(
+                orm.ResearchJob,
+                source_count,
+                orm.CriticAnnotation.overall_confidence,
+                orm.FollowUp.parent_job_id,
+                parent.topic,
+                orm.Report.body["follow_ups"],
+            )
+            .outerjoin(orm.Report, orm.Report.job_id == orm.ResearchJob.id)
+            .outerjoin(orm.CriticAnnotation, orm.CriticAnnotation.report_id == orm.Report.id)
+            .outerjoin(orm.FollowUp, orm.FollowUp.child_job_id == orm.ResearchJob.id)
+            .outerjoin(parent, parent.id == orm.FollowUp.parent_job_id)
+            .where(orm.ResearchJob.user_id == user_id)
+            .order_by(orm.ResearchJob.created_at.desc(), orm.ResearchJob.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        rows = (await self._session.execute(stmt)).all()
+
+        total_stmt = (
+            select(func.count())
+            .select_from(orm.ResearchJob)
+            .where(orm.ResearchJob.user_id == user_id)
+        )
+        total = (await self._session.execute(total_stmt)).scalar_one()
+
+        items = [
+            JobSummary(
+                id=job.id,
+                topic=job.topic,
+                status=JobStatus(job.status),
+                progress=job.progress,
+                created_at=job.created_at,
+                source_count=count,
+                overall_confidence=confidence,
+                parent_job_id=parent_job_id,
+                parent_topic=parent_topic,
+                follow_ups=list(follow_ups or []),
+            )
+            for job, count, confidence, parent_job_id, parent_topic, follow_ups in rows
+        ]
+        return JobListResponse(items=items, total=total, limit=limit, offset=offset)
 
     async def get_follow_up_parent_id(self, child_job_id: UUID) -> UUID | None:
         """Return the parent job id if `child_job_id` was spawned as a follow-up, else None.
@@ -232,6 +296,20 @@ class JobRepository:
         self._session.add(row)
         await self._session.flush()
         return row.id
+
+    async def delete_job(self, job_id: UUID, *, user_id: UUID) -> None:
+        """Delete a job and everything hanging off it: sources, report, annotations, events, and the FollowUp edges that reference it.
+
+        Scoped to the owner — a job that exists but belongs to someone else surfaces as `JobNotFoundError` so we don't leak existence across tenants. Every child FK is `ondelete="CASCADE"`, so the DELETE on the job row cascades at the database level (no ORM object load needed). Follow-up children survive: only the FollowUp edge rows are removed, so derived jobs become standalone rather than disappearing.
+        """
+        owned = select(orm.ResearchJob.id).where(
+            orm.ResearchJob.id == job_id,
+            orm.ResearchJob.user_id == user_id,
+        )
+        if (await self._session.execute(owned)).scalar_one_or_none() is None:
+            msg = f"research job {job_id} not found"
+            raise JobNotFoundError(msg)
+        await self._session.execute(delete(orm.ResearchJob).where(orm.ResearchJob.id == job_id))
 
     async def _require_row(self, job_id: UUID) -> orm.ResearchJob:
         row = await self._session.get(orm.ResearchJob, job_id)

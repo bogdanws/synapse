@@ -187,9 +187,83 @@ export type JobLineage = {
 };
 
 /**
+ * JobListResponse
+ *
+ * Paginated envelope for the history list.
+ */
+export type JobListResponse = {
+    /**
+     * Items
+     */
+    items: Array<JobSummary>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Offset
+     */
+    offset: number;
+};
+
+/**
  * JobStatus
  */
 export type JobStatus = 'pending' | 'scouting' | 'synthesizing' | 'critiquing' | 'completed' | 'failed';
+
+/**
+ * JobSummary
+ *
+ * Compact job descriptor for the history list (`GET /api/research`).
+ *
+ * Carries only what the library list renders, plus the follow-up parent edge so a child job
+ * can show a "Follow-up of …" link. `source_count` and `overall_confidence` are derived by
+ * join at query time; `overall_confidence` is null until the job completes and Critic writes its
+ * annotations.
+ */
+export type JobSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Topic
+     */
+    topic: string;
+    status: JobStatus;
+    /**
+     * Progress
+     */
+    progress?: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Source Count
+     */
+    source_count?: number;
+    /**
+     * Overall Confidence
+     */
+    overall_confidence?: number | null;
+    /**
+     * Parent Job Id
+     */
+    parent_job_id?: string | null;
+    /**
+     * Parent Topic
+     */
+    parent_topic?: string | null;
+    /**
+     * Follow Ups
+     */
+    follow_ups?: Array<string>;
+};
 
 /**
  * PreviewResponse
@@ -1066,6 +1140,40 @@ export type UsersPatchUserApiAuthUsersIdPatchResponses = {
 
 export type UsersPatchUserApiAuthUsersIdPatchResponse = UsersPatchUserApiAuthUsersIdPatchResponses[keyof UsersPatchUserApiAuthUsersIdPatchResponses];
 
+export type ListResearchApiResearchGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/research';
+};
+
+export type ListResearchApiResearchGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListResearchApiResearchGetError = ListResearchApiResearchGetErrors[keyof ListResearchApiResearchGetErrors];
+
+export type ListResearchApiResearchGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobListResponse;
+};
+
+export type ListResearchApiResearchGetResponse = ListResearchApiResearchGetResponses[keyof ListResearchApiResearchGetResponses];
+
 export type StartResearchApiResearchPostData = {
     body: ResearchRequest;
     path?: never;
@@ -1205,6 +1313,36 @@ export type GetReportApiResearchJobIdReportGetResponses = {
 };
 
 export type GetReportApiResearchJobIdReportGetResponse = GetReportApiResearchJobIdReportGetResponses[keyof GetReportApiResearchJobIdReportGetResponses];
+
+export type DeleteResearchApiResearchJobIdDeleteData = {
+    body?: never;
+    path: {
+        /**
+         * Job Id
+         */
+        job_id: string;
+    };
+    query?: never;
+    url: '/api/research/{job_id}';
+};
+
+export type DeleteResearchApiResearchJobIdDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteResearchApiResearchJobIdDeleteError = DeleteResearchApiResearchJobIdDeleteErrors[keyof DeleteResearchApiResearchJobIdDeleteErrors];
+
+export type DeleteResearchApiResearchJobIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteResearchApiResearchJobIdDeleteResponse = DeleteResearchApiResearchJobIdDeleteResponses[keyof DeleteResearchApiResearchJobIdDeleteResponses];
 
 export type ExportMarkdownApiResearchJobIdExportMarkdownGetData = {
     body?: never;

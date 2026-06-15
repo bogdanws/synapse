@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import ResearchInputPage from './ResearchInputPage'
+import type { JobSummary } from '../types/api'
 
 const mockNavigate = vi.fn()
 const mockStartResearch = vi.hoisted(() => vi.fn())
@@ -43,6 +44,32 @@ vi.mock('../hooks/useMe', () => ({
   useMe: () => ({ email: 'alice@example.com', id: '1', is_active: true }),
 }))
 
+vi.mock('../hooks/useResearchHistory', () => ({ useResearchHistory: vi.fn() }))
+
+import { useResearchHistory } from '../hooks/useResearchHistory'
+
+function mockHistory(
+  jobs: Array<{ topic: string; followUps?: string[]; status?: JobSummary['status'] }>,
+) {
+  const items = jobs.map(
+    (job, i): JobSummary => ({
+      id: `job-${i}`,
+      topic: job.topic,
+      status: job.status ?? 'completed',
+      progress: 1,
+      created_at: new Date('2026-06-12').toISOString(),
+      source_count: 8,
+      overall_confidence: 0.9,
+      parent_job_id: null,
+      parent_topic: null,
+      follow_ups: job.followUps ?? [],
+    }),
+  )
+  vi.mocked(useResearchHistory).mockReturnValue({
+    data: { pages: [{ items, total: items.length, limit: 20, offset: 0 }] },
+  } as unknown as ReturnType<typeof useResearchHistory>)
+}
+
 vi.mock('../services/api', () => ({
   ApiError: class ApiError extends Error {
     readonly status: number
@@ -71,6 +98,7 @@ describe('ResearchInputPage', () => {
     vi.clearAllMocks()
     localStorage.clear()
     mockStartResearch.mockReset()
+    mockHistory([])
   })
 
   it('renders headline, textarea, and agent model pills', () => {
@@ -166,18 +194,44 @@ describe('ResearchInputPage', () => {
     })
   })
 
-  it('fills topic when clicking an example question', async () => {
+  it('seeds the recent-question grid from report follow-ups and fills the topic on click', async () => {
+    mockHistory([
+      {
+        topic: 'Why has Eastern European venture funding declined?',
+        followUps: ['How did exits change in 2024?'],
+      },
+    ])
     renderPage()
 
-    const example = screen.getByText(/current state of evidence on GLP-1 agonists/i)
+    const example = screen.getByRole('button', {
+      name: /How did exits change in 2024\?/i,
+    })
     await userEvent.click(example)
 
     const textarea = screen.getByPlaceholderText(
       /type your research topic here/i,
     ) as HTMLTextAreaElement
-    expect(textarea.value).toBe(
-      "What's the current state of evidence on GLP-1 agonists and cardiovascular outcomes in non-diabetic patients?",
-    )
+    expect(textarea.value).toBe('How did exits change in 2024?')
+  })
+
+  it('hides the recent-question grid when history has no follow-up suggestions', () => {
+    mockHistory([{ topic: 'Completed brief with no suggestions', followUps: [] }])
+    renderPage()
+
+    expect(screen.queryByText(/start from a recent question/i)).not.toBeInTheDocument()
+  })
+
+  it('round-robins one follow-up per report before taking another from the same report', () => {
+    mockHistory([
+      { topic: 'Newest brief', followUps: ['A-first', 'A-second'] },
+      { topic: 'Middle brief', followUps: ['B-first'] },
+      { topic: 'Oldest brief', followUps: ['C-first', 'C-second'] },
+    ])
+    renderPage()
+
+    const grid = screen.getByText(/start from a recent question/i).parentElement!
+    const labels = Array.from(grid.querySelectorAll('button .serif')).map((el) => el.textContent)
+    expect(labels).toEqual(['A-first', 'B-first', 'C-first', 'A-second'])
   })
 
   it('uses persisted model selections from localStorage', async () => {

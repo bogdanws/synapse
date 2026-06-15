@@ -72,6 +72,36 @@ class ResearchJob(BaseModel):
     completed_at: datetime | None = None
 
 
+class JobSummary(BaseModel):
+    """Compact job descriptor for the history list (`GET /api/research`).
+
+    Carries only what the library list renders, plus the follow-up parent edge so a child job
+    can show a "Follow-up of …" link. `source_count` and `overall_confidence` are derived by
+    join at query time; `overall_confidence` is null until the job completes and Critic writes its
+    annotations.
+    """
+
+    id: UUID
+    topic: str
+    status: JobStatus
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
+    created_at: datetime
+    source_count: int = 0
+    overall_confidence: float | None = None
+    parent_job_id: UUID | None = None
+    parent_topic: str | None = None
+    follow_ups: list[str] = Field(default_factory=list)
+
+
+class JobListResponse(BaseModel):
+    """Paginated envelope for the history list."""
+
+    items: list[JobSummary]
+    total: int
+    limit: int
+    offset: int
+
+
 class Source(BaseModel):
     """A single source gathered by Scout, referenced by Scribe and Critic."""
 
