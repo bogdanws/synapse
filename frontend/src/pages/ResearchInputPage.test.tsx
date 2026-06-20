@@ -150,7 +150,7 @@ describe('ResearchInputPage', () => {
     await userEvent.type(textarea, 'Why has Eastern European venture funding declined?')
 
     await userEvent.click(screen.getByRole('combobox', { name: /research depth/i }))
-    await userEvent.click(screen.getByRole('option', { name: /deep/i }))
+    await userEvent.click(await screen.findByRole('option', { name: /deep/i }))
 
     await userEvent.click(screen.getByRole('button', { name: /start brief/i }))
 
